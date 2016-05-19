@@ -8,26 +8,40 @@ import java.net.Socket;
  * Created by mso on 16-5-18.
  */
 public class Server {
+    private String KpubS;
+    private String KpriS;
+
     public static void main(String[] args) {
         new Server();
     }
 
     public Server() {
-        ServerSocket serverSocket = null;
+        // generate server public-private key
+        geneKpubS();
+        ServerSocket serverSocket;
         try {
             serverSocket = new ServerSocket(8000);
-            int clientNo = 1;
             while (true) {
                 Socket socket = serverSocket.accept();
-
                 HandleAClient task = new HandleAClient(socket);
-
                 new Thread(task).start();
             }
         } catch (IOException e) {
             System.err.println(e);
         }
 
+    }
+
+    public void geneKpubS() {
+        // generate public-private key for server
+    }
+
+    public String getKpubS() {
+        return KpubS;
+    }
+
+    public String getKpriS() {
+        return KpriS;
     }
 
     private class HandleAClient implements Runnable{
@@ -40,17 +54,32 @@ public class Server {
                 DataInputStream inputFromClient = new DataInputStream(socket.getInputStream());
                 DataOutputStream outputToClient = new DataOutputStream(socket.getOutputStream());
                 while (true) {
-                    double radius = inputFromClient.readDouble();
+                    String encryptMessage = inputFromClient.readUTF();
+                    // decrypt using server private key
+                    String message = decrypt(encryptMessage, getKpriS());
+                    String messageType = message.split("\n")[0];
+                    switch (messageType) {
+                        case "REG": {
+                            registerBiz(message);
+                            break;
+                        }
+                        case "LOG": {
 
-                    double area = radius * radius * Math.PI;
-
-                    outputToClient.writeDouble(area);
-
+                        }
+                    }
                 }
             }
             catch (IOException e) {
                 System.err.println(e);
             }
+        }
+
+        private void registerBiz(String message) {
+        }
+
+        private String decrypt(String encryptMessage, String key) {
+            // TO DO
+            return null;
         }
     }
 }
