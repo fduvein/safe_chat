@@ -1,26 +1,27 @@
+import java.security.Key;
+import java.security.KeyPair;
+
 /**
  * Created by mso on 16-5-19.
  */
 public class User {
     private String userID;
-    private String kpubC;
-    private String kpriC;
+    private Key kpubC;
+    private Key kpriC;
 
     public User(String userID) {
         this.userID = userID;
-
         // generate client public-private key
-        geneKpubC();
+        KeyPair keyPair = KeyGene.geneKeyPair();
+        kpubC = keyPair.getPublic();
+        kpriC = keyPair.getPrivate();
     }
 
-    private void geneKpubC() {
-    }
-
-    public String getKpubC() {
+    public Key getKpubC() {
         return kpubC;
     }
 
-    public String getKpriC() {
+    public Key getKpriC() {
         return kpriC;
     }
 }
