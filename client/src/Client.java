@@ -1,7 +1,6 @@
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.swing.*;
 import java.io.*;
 import java.net.Socket;
 import java.security.InvalidKeyException;
@@ -11,7 +10,7 @@ import java.security.NoSuchAlgorithmException;
 /**
  * Created by mso on 16-5-18.
  */
-public class Client extends JFrame {
+public class Client {
     private final String HOST = "localhost";
     private final int PORT = 8000;
     private final String SERVER_PUBLIC_KEY_FILE = "client/res/kpubS.key";
@@ -20,8 +19,6 @@ public class Client extends JFrame {
     private final int MESSAGE_SEGMENT_LENGTH = 117;
 
     private Key kpubS;
-
-    private User user;
 
     private OutputStream toServer;
     private InputStream fromServer;
@@ -102,23 +99,53 @@ public class Client extends JFrame {
         // construct register message
         // KpubS("REG"+id+kpubC+KpriC(time))
         Message message = new Message(Message.Type.REGISTER, userID, "");
+        // add user public key
         message.setSenderPubKey(user.getKpubC());
+        // add time stamp
+        String messageTimeStamp = System.currentTimeMillis()+"";
+        message.setEncryptedTimeStamp(KeyGene.encrypt(messageTimeStamp.getBytes(), user.getKpriC()));
+        // send message to server through secure channel
+        secureSend(message);
+        // wait server to response and get the reply from server
+        Message reply = getReply(user.getKpriC());
+        // check time stamp
+        byte[] encryptTimeStamp = message.getEncryptedTimeStamp();
+        Key kpubC = message.getSenderPubKey();
+        byte[] replyTimeStampBytes = KeyGene.decrypt(encryptTimeStamp, kpubC);
+        long replyTimeStamp = Long.parseLong(new String(replyTimeStampBytes));
+        long timeDiff = System.currentTimeMillis() - replyTimeStamp;
+        if (timeDiff > 0 && timeDiff < MAX_TIME_DIFF) {
+            if (reply.getType() == Message.Type.SUCCESS) {
+                System.out.println("register success  ");
+                // store user key in local
+                ObjectOutputStream publicKeyOutputStream = new ObjectOutputStream(new FileOutputStream("client/res/kpub_" + userID + ".key"));
+                ObjectOutputStream privateKeyOutputStream = new ObjectOutputStream(new FileOutputStream("client/res/kpri_" + userID + ".key"));
+                publicKeyOutputStream.writeObject(user.getKpubC());
+                privateKeyOutputStream.writeObject(user.getKpriC());
+                publicKeyOutputStream.close();
+                privateKeyOutputStream.close();
+            } else if (reply.getType() == Message.Type.FAILED) {
+                System.out.println("register fail: " + reply.getContent());
+            }
+        } else {
+            System.out.println("register fail: can not trust server");
+        }
+    }
+
+    public void login(String userID, Key kpriC) throws IOException, IllegalBlockSizeException, BadPaddingException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, ClassNotFoundException {
+        // construct register message
+        // KpubS("REG"+id+kpubC+KpriC(time))
+        Message message = new Message(Message.Type.LOGIN, userID, "");
         String timeStamp = System.currentTimeMillis()+"";
-        message.setEncryptedTimeStamp(KeyGene.encrypt(timeStamp.getBytes(), user.getKpriC()));
+        message.setEncryptedTimeStamp(KeyGene.encrypt(timeStamp.getBytes(), kpriC));
         secureSend(message);
 
-        Message reply = getReply(user.getKpriC());
+        Message reply = getReply(kpriC);
         if (reply.getType() == Message.Type.SUCCESS) {
-            System.out.println("success  ");
-            // store user key in local
-            ObjectOutputStream publicKeyOutputStream = new ObjectOutputStream(new FileOutputStream("client/res/kpub_" + userID + ".key"));
-            ObjectOutputStream privateKeyOutputStream = new ObjectOutputStream(new FileOutputStream("client/res/kpri_" + userID + ".key"));
-            publicKeyOutputStream.writeObject(user.getKpubC());
-            privateKeyOutputStream.writeObject(user.getKpriC());
-            publicKeyOutputStream.close();
-            privateKeyOutputStream.close();
-        } else if (reply.getType() == Message.Type.FAIL) {
-            System.out.println("fail: " + reply.getContent());
+            System.out.println("login success  ");
+
+        } else if (reply.getType() == Message.Type.FAILED) {
+            System.out.println("login fail: " + reply.getContent());
         }
     }
 

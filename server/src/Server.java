@@ -103,32 +103,13 @@ public class Server {
                     if (timeDiff > 0 && timeDiff < MAX_TIME_DIFF) {
                         switch (message.getType()) {
                             case REGISTER: {
-                                // check whether id exist in user list
-                                boolean exist = false;
-                                for (User u: userList) {
-                                    if (u.getID().equals(message.getSenderID())) {
-                                        exist = true;
-                                    }
-                                }
-                                if (exist) {
-                                    // user id exist
-                                    reply = new Message(Message.Type.FAIL, "", "");
-                                    reply.setContent("user id existed");
-                                } else {
-                                    // create the user and add it into userList
-                                    User user = new User(message.getSenderID(), message.getSenderPubKey());
-                                    userList.add(user);
-                                    userDataXML.updateXml(userList);
-
-                                    // tell the client success
-                                    reply = new Message(Message.Type.SUCCESS, "", "");
-                                }
+                                reply = register(message);
                                 break;
                             }
                         }
                     } else {
                         // time stamp out of date error
-                        reply = new Message(Message.Type.FAIL, "", "");
+                        reply = new Message(Message.Type.FAILED, "", "");
                         reply.setContent("time out");
                     }
                     secureSend(outputToClient, reply, message.getSenderPubKey());
@@ -147,8 +128,35 @@ public class Server {
 
         }
 
+        private Message register(Message message) {
+            Message reply;
+            // check whether id exist in user list
+            boolean exist = false;
+            for (User u: userList) {
+                if (u.getID().equals(message.getSenderID())) {
+                    exist = true;
+                }
+            }
+            if (exist) {
+                // user id exist
+                reply = new Message(Message.Type.FAILED, "", "");
+                reply.setContent("user id existed");
+            } else {
+                // create the user and add it into userList
+                User user = new User(message.getSenderID(), message.getSenderPubKey());
+                userList.add(user);
+                userDataXML.updateXml(userList);
+                // tell the client success
+                reply = new Message(Message.Type.SUCCESS, "", "");
+            }
+            return reply;
+        }
+
         public void secureSend(OutputStream outputToClient, Message reply, Key key) {
             try {
+                // add time stamp
+                String replyTimeStamp = System.currentTimeMillis()+"";
+                reply.setEncryptedTimeStamp(KeyGene.encrypt(replyTimeStamp.getBytes(), kpriS));
                 // encrypt the message
                 byte[] replyBytes = Message.writeObject(reply);
                 int segmentNum = replyBytes.length/MESSAGE_SEGMENT_LENGTH;
