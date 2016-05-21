@@ -93,7 +93,7 @@ public class Message implements Serializable {
     }
 
     enum Type {
-        REGISTER, LOGIN, SUCCESS, FAIL
+        REGISTER, LOGIN, SUCCESS, FAIL, ERROR
     }
 
 }
