@@ -23,7 +23,7 @@ public class ServerKey {
                 privateKeyInputStream.close();
             } else {
                 // generate a new pair of public-private key
-                KeyPair keyPair = KeyGene.geneKeyPair();
+                KeyPair keyPair = RSAKey.geneKeyPair();
                 publicKey = keyPair.getPublic();
                 privateKey = keyPair.getPrivate();
                 ObjectOutputStream publicKeyOutputStream = new ObjectOutputStream(new FileOutputStream(publicKeyFile));

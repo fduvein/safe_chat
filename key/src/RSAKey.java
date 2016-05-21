@@ -7,9 +7,7 @@ import java.security.*;
 /**
  * Created by mso on 16-5-20.
  */
-public class KeyGene {
-
-
+public class RSAKey {
     public static KeyPair geneKeyPair() {
         // generate public-private key for server
         try {

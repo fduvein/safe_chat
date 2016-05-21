@@ -36,20 +36,18 @@ public class Client {
                 kpubS = (Key)publicKeyInputStream.readObject();
                 publicKeyInputStream.close();
             }
+            // construct socket with server
             Socket socket = new Socket(HOST, PORT);
             fromServer = socket.getInputStream();
             toServer = socket.getOutputStream();
-            register("freemso");
-            fromServer.close();
-            toServer.close();
         } catch (IOException e) {
             // tell user connection not available
-        } catch (ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException | NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException e) {
+        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
     }
 
-    public void secureSend(Message message) throws IOException, IllegalBlockSizeException, BadPaddingException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
+    public void sendRSAMessage(Message message) throws IOException, IllegalBlockSizeException, BadPaddingException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
         byte[] messageBytes = Message.writeObject(message);
         // encrypt the message
         int segmentNum = messageBytes.length/MESSAGE_SEGMENT_LENGTH;
@@ -66,7 +64,7 @@ public class Client {
             for (int j = 0; j < bytes.length; j++) {
                 bytes[j] = messageBytes[i*MESSAGE_SEGMENT_LENGTH + j];
             }
-            byte[] encryptBytes = KeyGene.encrypt(bytes, kpubS);
+            byte[] encryptBytes = RSAKey.encrypt(bytes, kpubS);
             toServer.write(encryptBytes);
         }
         if (remainder != 0) {
@@ -74,24 +72,11 @@ public class Client {
             for (int k = 0; k < remainder; k++) {
                 bytes[k] = messageBytes[(segmentNum)*MESSAGE_SEGMENT_LENGTH+k];
             }
-            byte[] encryptBytes = KeyGene.encrypt(bytes, kpubS);
+            byte[] encryptBytes = RSAKey.encrypt(bytes, kpubS);
             toServer.write(encryptBytes);
         }
         toServer.write(messageBytes);
         toServer.flush();
-    }
-
-    public Message getReply(Key key) throws IOException, IllegalBlockSizeException, InvalidKeyException, BadPaddingException, NoSuchAlgorithmException, NoSuchPaddingException, ClassNotFoundException {
-        int messageLength = new DataInputStream(fromServer).readInt();
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        for (int i = 0; i < messageLength; i += STREAM_SEGMENT_LENGTH) {
-            byte[] encryptBytes = new byte[STREAM_SEGMENT_LENGTH];
-            fromServer.read(encryptBytes);
-            byte[] bytes = KeyGene.decrypt(encryptBytes, key);
-            baos.write(bytes);
-        }
-        byte[] messageBytes = baos.toByteArray();
-        return Message.readObject(messageBytes);
     }
 
     public void register(String userID) throws IOException, IllegalBlockSizeException, BadPaddingException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, ClassNotFoundException {
@@ -103,15 +88,24 @@ public class Client {
         message.setSenderPubKey(user.getKpubC());
         // add time stamp
         String messageTimeStamp = System.currentTimeMillis()+"";
-        message.setEncryptedTimeStamp(KeyGene.encrypt(messageTimeStamp.getBytes(), user.getKpriC()));
+        message.setEncryptedTimeStamp(RSAKey.encrypt(messageTimeStamp.getBytes(), user.getKpriC()));
         // send message to server through secure channel
-        secureSend(message);
+        sendRSAMessage(message);
         // wait server to response and get the reply from server
-        Message reply = getReply(user.getKpriC());
+        int messageLength = new DataInputStream(fromServer).readInt();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        for (int i = 0; i < messageLength; i += STREAM_SEGMENT_LENGTH) {
+            byte[] encryptBytes = new byte[STREAM_SEGMENT_LENGTH];
+            fromServer.read(encryptBytes);
+            byte[] bytes = RSAKey.decrypt(encryptBytes, user.getKpriC());
+            baos.write(bytes);
+        }
+        byte[] messageBytes = baos.toByteArray();
+        Message reply = Message.readObject(messageBytes);
         // check time stamp
         byte[] encryptTimeStamp = message.getEncryptedTimeStamp();
         Key kpubC = message.getSenderPubKey();
-        byte[] replyTimeStampBytes = KeyGene.decrypt(encryptTimeStamp, kpubC);
+        byte[] replyTimeStampBytes = RSAKey.decrypt(encryptTimeStamp, kpubC);
         long replyTimeStamp = Long.parseLong(new String(replyTimeStampBytes));
         long timeDiff = System.currentTimeMillis() - replyTimeStamp;
         if (timeDiff > 0 && timeDiff < MAX_TIME_DIFF) {
@@ -137,10 +131,21 @@ public class Client {
         // KpubS("REG"+id+kpubC+KpriC(time))
         Message message = new Message(Message.Type.LOGIN, userID, "");
         String timeStamp = System.currentTimeMillis()+"";
-        message.setEncryptedTimeStamp(KeyGene.encrypt(timeStamp.getBytes(), kpriC));
-        secureSend(message);
+        message.setEncryptedTimeStamp(RSAKey.encrypt(timeStamp.getBytes(), kpriC));
+        sendRSAMessage(message);
 
-        Message reply = getReply(kpriC);
+        // wait server to response and get the reply from server
+        int messageLength = new DataInputStream(fromServer).readInt();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        for (int i = 0; i < messageLength; i += STREAM_SEGMENT_LENGTH) {
+            byte[] encryptBytes = new byte[STREAM_SEGMENT_LENGTH];
+            fromServer.read(encryptBytes);
+            byte[] bytes = RSAKey.decrypt(encryptBytes, kpriC);
+            baos.write(bytes);
+        }
+        byte[] messageBytes = baos.toByteArray();
+        Message reply = Message.readObject(messageBytes);
+
         if (reply.getType() == Message.Type.SUCCESS) {
             System.out.println("login success  ");
 

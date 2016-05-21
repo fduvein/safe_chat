@@ -12,7 +12,7 @@ public class User {
     public User(String userID) {
         this.userID = userID;
         // generate client public-private key
-        KeyPair keyPair = KeyGene.geneKeyPair();
+        KeyPair keyPair = RSAKey.geneKeyPair();
         kpubC = keyPair.getPublic();
         kpriC = keyPair.getPrivate();
     }

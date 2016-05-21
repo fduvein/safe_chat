@@ -1,9 +1,9 @@
 说明：
 K()表示用密钥K加密括号内的内容
-+号表示需要对消息进行分割
-消息的前后顺序可以变更
+消息均为二进制的序列化Message对象
 KpubV表示V的公钥，KpriV表示V的私钥
 KAB表示AB之间的对称秘钥，A持有
+KAB = KBA
 
 0 客户端存有服务器的公钥KpubS
 
@@ -39,19 +39,19 @@ KAB表示AB之间的对称秘钥，A持有
 
 3 加好友（A要加B为好友）
 	3.1 用户A输入用户B的ID
-	3.2 客户端向服务器发送消息KAS(FRIENDING+IDA+IDB+TIME)
+	3.2 客户端向服务器发送消息KAS(FRIENDING+IDA+IDB+KAS(TIME))
 	3.3 服务器查询数据库
 	3.4 不存在IDB或不在线
-		3.4.1 向A发送消息KSA(NOT_EXIST/OFFLINE+TIME)
+		3.4.1 向A发送消息KSA(NOT_EXIST/OFFLINE+KSA(TIME))
 		3.4.2 A收到消息
 	3.5 存在IDB且在线
-		3.5.1 向B发送消息KSB(FRIENDING+IDA+IDB+TIME)
+		3.5.1 向B发送消息KSB(FRIENDING+IDA+IDB+KSB(TIME))
 		3.5.2 B收到消息，做出反应
 		3.5.3 B同意了
 			3.5.3.1 B在客户端显示
-			3.5.3.2 B向服务器发送KBS(YES+IDA+IDB+TIME)
+			3.5.3.2 B向服务器发送KBS(YES+IDA+IDB+KBS(TIME))
 		3.5.4 B不同意
-			3.5.4.1 B向服务器发送KBS(NO+IDA+IDB+TIME)
+			3.5.4.1 B向服务器发送KBS(NO+IDA+IDB+KBS(TIME))
 		3.5.5 服务器收到B的消息，验证B是否同意
 		3.5.6 同意了
 			3.5.6.1 服务器在数据库记录好友关系
@@ -76,13 +76,13 @@ KAB表示AB之间的对称秘钥，A持有
 5 用户聊天
 	5.1 需要发送的文本信息为T
 	5.2 AB之间已经共享对称秘钥KAB，KBA
-	5.3 所有消息格式都是KAS(FORWARD+IDA+IDB+KAB(CHAT+T+TIME))
+	5.3 所有消息格式都是KAS(FORWARD+IDA+IDB+KAB(CHAT+T+KAS(TIME)))
 
 6 获得好友列表
-	6.1 C向服务器发送消息KCS(FRIEND_LIST+IDC+TIME)
-	6.2 服务器返回消息KSC(FRIEND_LIST+friend_id_list+TIME)
+	6.1 C向服务器发送消息KCS(FRIEND_LIST+IDC+KCS(TIME))
+	6.2 服务器返回消息KSC(FRIEND_LIST+friend_id_list+KSC(TIME))
 
 7 查询用户公钥
-	7.1 C向服务器发送消息KCS(QUERY+IDC+IDQ+TIME)
-	7.2 服务器返回消息KSC(QUERY+KpubQ+TIME)
+	7.1 C向服务器发送消息KCS(QUERY+IDC+IDQ+KCS(TIME))
+	7.2 服务器返回消息KSC(QUERY+KpubQ+KSC(TIME))
 	
