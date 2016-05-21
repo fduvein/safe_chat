@@ -8,13 +8,13 @@ import javax.crypto.spec.SecretKeySpec;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.*;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.security.Key;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -39,15 +39,15 @@ public class UserDataXML {
             for (User u: userList) {
                 Element user = document.createElement("user");
                 Element id = document.createElement("id");
-                id.appendChild(document.createTextNode(u.getID()));
+                id.setTextContent(u.getID());
                 user.appendChild(id);
                 Element kpub = document.createElement("kpub");
-                kpub.appendChild(document.createTextNode(Base64.getEncoder().encodeToString(u.getKpubC().getEncoded())));
+                kpub.setTextContent(Base64.getEncoder().encodeToString(u.getKpubC().getEncoded()));
                 user.appendChild(kpub);
                 Element friendIDList = document.createElement("friendIDList");
                 for (String fID: u.getFriendsIDList()) {
                     Element friendID = document.createElement("friendID");
-                    friendID.appendChild(document.createTextNode(fID));
+                    friendID.setTextContent(fID);
                     friendIDList.appendChild(friendID);
                 }
                 user.appendChild(friendIDList);
@@ -69,30 +69,57 @@ public class UserDataXML {
 
     public ArrayList<User> getUserList() {
         ArrayList<User> ret = new ArrayList<>();
+        File user_data = new File(user_data_file);
+        if (!user_data.exists()) {
+            return ret;
+        }
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory
                     .newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
-            Document document = builder.newDocument();
-            NodeList userNodeList = document.getChildNodes();
+            Document document = builder.parse(user_data_file);
+            Node root = document.getDocumentElement();
+            NodeList userNodeList = root.getChildNodes();
             for (int i = 0; i < userNodeList.getLength(); i++) {
                 Node userNode = userNodeList.item(i);
-                NodeList userInfo = userNode.getChildNodes();
-                Node idNode = userInfo.item(0);
-                Node kpubNode = userInfo.item(1);
-                Node friendNode = userInfo.item(2);
-                NodeList friendNodeList = friendNode.getChildNodes();
-                String id = idNode.getTextContent();
-                byte[] decodedKey = Base64.getDecoder().decode(kpubNode.getTextContent());
-                Key kpub = new SecretKeySpec(decodedKey, 0, decodedKey.length, "RSA");
-                User user = new User(id, kpub);
-                ArrayList<String> friendList = user.getFriendsIDList();
-                for (int j = 0; j < friendNodeList.getLength(); j++) {
-                    friendList.add(friendNodeList.item(j).getTextContent());
+                String id = null;
+                Key kpub = null;
+                ArrayList<String> friendList = new ArrayList<>();
+                for (Node node = userNode.getFirstChild(); node != null; node = node.getNextSibling()) {
+                    if (node.getNodeType() == Node.ELEMENT_NODE) {
+                        if ("id".equals(node.getNodeName())) {
+                            System.out.println(node.getFirstChild().getNodeValue());
+                            id = node.getFirstChild().getNodeValue();
+                        }
+                    }
+                    if (node.getNodeType() == Node.ELEMENT_NODE) {
+                        if ("kpub".equals(node.getNodeName())) {
+                            System.out.println(node.getFirstChild().getNodeValue());
+                            byte[] decodedKey = Base64.getDecoder().decode(node.getFirstChild().getNodeValue());
+                            kpub = new SecretKeySpec(decodedKey, 0, decodedKey.length, "RSA");
+                        }
+                    }
+                    if (node.getNodeType() == Node.ELEMENT_NODE) {
+                        if ("friendIDList".equals(node.getNodeName())) {
+                            if (node.hasChildNodes()) {
+                                for (Node childNode = node.getFirstChild(); childNode != null; childNode = childNode.getNextSibling()) {
+                                    if (childNode.getNodeType() == Node.ELEMENT_NODE) {
+                                        if ("friendID".equals(childNode.getNodeName())) {
+                                            System.out.println(childNode.getFirstChild().getNodeValue());
+                                            friendList.add(childNode.getFirstChild().getNodeValue());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
+                User user = new User(id, kpub);
+                user.setFriendsIDList(friendList);
+                ret.add(user);
             }
-        } catch (ParserConfigurationException e) {
-            System.out.println(e.getMessage());
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            e.printStackTrace();
         }
         return ret;
     }

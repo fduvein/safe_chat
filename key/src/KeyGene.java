@@ -1,12 +1,8 @@
-import sun.misc.BASE64Decoder;
-import sun.misc.BASE64Encoder;
-
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.security.*;
-import java.security.spec.RSAKeyGenParameterSpec;
 
 /**
  * Created by mso on 16-5-20.

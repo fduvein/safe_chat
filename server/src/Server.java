@@ -4,7 +4,9 @@ import javax.crypto.NoSuchPaddingException;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.security.*;
+import java.security.InvalidKeyException;
+import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 
 /**
@@ -12,9 +14,9 @@ import java.util.ArrayList;
  */
 public class Server {
     private final int PORT = 8000;
-    private final String PUBLIC_KEY_FILE = "server/kpubS.key";
-    private final String PRIVATE_KEY_FILE = "server/kpriS.key";
-    private final String USER_DATA_FILE = "server/users.xml";
+    private final String PUBLIC_KEY_FILE = "server/res/kpubS.key";
+    private final String PRIVATE_KEY_FILE = "server/res/kpriS.key";
+    private final String USER_DATA_FILE = "server/res/users.xml";
     private final long MAX_TIME_DIFF = 1000*5;
     private final int STREAM_SEGMENT_LENGTH = 128;
     private final int MESSAGE_SEGMENT_LENGTH = 117;

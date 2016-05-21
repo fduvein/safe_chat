@@ -7,8 +7,6 @@ import java.net.Socket;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
-import java.security.Timestamp;
-import java.util.Date;
 
 /**
  * Created by mso on 16-5-18.
@@ -16,7 +14,7 @@ import java.util.Date;
 public class Client extends JFrame {
     private final String HOST = "localhost";
     private final int PORT = 8000;
-    private final String SERVER_PUBLIC_KEY_FILE = "client/kpubS.key";
+    private final String SERVER_PUBLIC_KEY_FILE = "client/res/kpubS.key";
     private final long MAX_TIME_DIFF = 1000*5;
     private final int STREAM_SEGMENT_LENGTH = 128;
     private final int MESSAGE_SEGMENT_LENGTH = 117;
@@ -112,6 +110,13 @@ public class Client extends JFrame {
         Message reply = getReply(user.getKpriC());
         if (reply.getType() == Message.Type.SUCCESS) {
             System.out.println("success  ");
+            // store user key in local
+            ObjectOutputStream publicKeyOutputStream = new ObjectOutputStream(new FileOutputStream("client/res/kpub_" + userID + ".key"));
+            ObjectOutputStream privateKeyOutputStream = new ObjectOutputStream(new FileOutputStream("client/res/kpri_" + userID + ".key"));
+            publicKeyOutputStream.writeObject(user.getKpubC());
+            privateKeyOutputStream.writeObject(user.getKpriC());
+            publicKeyOutputStream.close();
+            privateKeyOutputStream.close();
         } else if (reply.getType() == Message.Type.FAIL) {
             System.out.println("fail: " + reply.getContent());
         }
