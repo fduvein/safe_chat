@@ -9,7 +9,5 @@ import javax.swing.*;
 public class ChatPanel extends JPanel {
     public ChatPanel(int x, int y) {
 
-
-
     }
 }

@@ -32,7 +32,7 @@ public class MainFrame extends JFrame {
         final Panel s = new Panel();
         final CardLayout card = new CardLayout();
         s.setLayout(card);
-        LoginPanel panel1 = new LoginPanel(x, y,it2,it3);
+        LoginPanel panel1 = new LoginPanel(x, y, it2, it3);
         AddFriendPanel panel2 = new AddFriendPanel(x, y);
         ChatPanel panel3 = new ChatPanel(x, y);
         s.add("init", new JLabel());

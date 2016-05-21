@@ -3,7 +3,9 @@ import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 
 /**
  * Created by Tanxin on 2016/5/16.
@@ -96,8 +98,6 @@ public class LoginPanel extends JPanel {
                     //add code here
                     // if(password!=null) //to check whether the password is read
                     //String email=id.getText();
-
-
 
 
                     //if login successful ,set the menuitem true
