@@ -21,17 +21,15 @@ public class AESKey {
         return null;
     }
 
-    public static byte[] decrypt(byte[] encryptMessageBytes, Key key) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+    public static byte[] decrypt(byte[] encryptMessageBytes, Key key) throws Exception {
         Cipher cipher = Cipher.getInstance("AES");
         cipher.init(Cipher.DECRYPT_MODE, key);
-        byte[] result = cipher.doFinal(encryptMessageBytes);
-        return result;
+        return cipher.doFinal(encryptMessageBytes);
     }
 
-    public static byte[] encrypt(byte[] messageBytes, Key key) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException, NoSuchPaddingException, NoSuchAlgorithmException {
+    public static byte[] encrypt(byte[] messageBytes, Key key) throws Exception {
         Cipher cipher = Cipher.getInstance("AES");
         cipher.init(Cipher.ENCRYPT_MODE, key);
-        byte[] result = cipher.doFinal(messageBytes);
-        return result;
+        return cipher.doFinal(messageBytes);
     }
 }

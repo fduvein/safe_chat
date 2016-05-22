@@ -1,3 +1,5 @@
+import sun.misc.BASE64Encoder;
+
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -7,7 +9,9 @@ import java.net.Socket;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.*;
 import java.util.ArrayList;
+import java.util.Base64;
 
 /**
  * Created by mso on 16-5-18.
@@ -79,110 +83,217 @@ public class Server {
             InputStream inputFromClient = null;
             OutputStream outputToClient = null;
             Message message = null;
-            Message reply = null;
             try {
                 inputFromClient = socket.getInputStream();
                 outputToClient = socket.getOutputStream();
                 int messageLength = new DataInputStream(inputFromClient).readInt();
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                 for (int i = 0; i < messageLength; i += STREAM_SEGMENT_LENGTH) {
-                    byte[] encryptBytes = new byte[STREAM_SEGMENT_LENGTH];
-                    inputFromClient.read(encryptBytes);
-                    byte[] bytes = RSAKey.decrypt(encryptBytes, kpriS);
-                    baos.write(bytes);
+                    byte[] encryptedBytes = new byte[STREAM_SEGMENT_LENGTH];
+                    inputFromClient.read(encryptedBytes);
+                    byte[] bytes = new byte[0];
+                    try {
+                        bytes = RSAKey.decrypt(encryptedBytes, kpriS);
+                    } catch (Exception e) {
+                        // can not decrypt message error
+                        // TODO
+                    }
+                    byteArrayOutputStream.write(bytes);
                 }
-                byte[] messageBytes = baos.toByteArray();
-                message = Message.readObject(messageBytes);
-                // check time stamp
-                byte[] encryptTimeStamp = message.getEncryptedTimeStamp();
-                Key kpubC = message.getSenderPubKey();
-                byte[] timeStampBytes = RSAKey.decrypt(encryptTimeStamp, kpubC);
-                long timeStamp = Long.parseLong(new String(timeStampBytes));
-                long timeDiff = System.currentTimeMillis() - timeStamp;
-                if (timeDiff > 0 && timeDiff < MAX_TIME_DIFF) {
-                    switch (message.getType()) {
-                        case REGISTER: {
-                            // check whether id exist in user list
-                            boolean exist = false;
-                            for (User u: userList) {
-                                if (u.getID().equals(message.getSenderID())) {
-                                    exist = true;
-                                }
-                            }
-                            if (exist) {
-                                // user id exist
-                                reply = new Message(Message.Type.FAILED, "", "");
-                                reply.setContent("user id existed");
-                            } else {
-                                // create the user and add it into userList
-                                User user = new User(message.getSenderID(), message.getSenderPubKey());
-                                userList.add(user);
-                                userDataXML.updateXml(userList);
-                                // tell the client success
-                                reply = new Message(Message.Type.SUCCESS, "", "");
-                            }
-                            break;
-                        }
-                        case LOGIN: {
+                byte[] messageBytes = byteArrayOutputStream.toByteArray();
+                try {
+                    message = Message.readObject(messageBytes);
+                } catch (ClassNotFoundException e) {
+                    // can not deserialize message error
+                    // TODO
+                }
+            } catch (IOException e) {
+                // socket error
+                // TODO
+            }
 
+            switch (message.getType()) {
+                case REGISTER: {
+                    // get necessary info
+                    String senderID = message.getSenderID();
+                    byte[] encryptedTimeStamp = message.getEncryptedTimeStamp();
+                    Key kpubC = message.getSenderPubKey();
+                    // check info integrity
+                    if (encryptedTimeStamp.length == 0 || kpubC == null || senderID == "") {
+                        // message miss info
+                        // TODO
+                    }
+                    try {
+                        // check time stamp
+                        byte[] timeStampBytes = new byte[0];
+                        try {
+                            timeStampBytes = RSAKey.decrypt(encryptedTimeStamp, kpubC);
+                        } catch (Exception e) {
+                            // can not decrypt time stamp error
+                            throw new InvalidMessageException();
+                        }
+                        long timeStamp = 0;
+                        try {
+                            timeStamp = Long.parseLong(new String(timeStampBytes));
+                        } catch (NumberFormatException e) {
+                            // time stamp format exception
+                            throw new InvalidMessageException();
+                        }
+                        long timeDiff = System.currentTimeMillis() - timeStamp;
+                        if (timeDiff < 0 || timeDiff > MAX_TIME_DIFF) {
+                            // time stamp out of data exception
+                            throw new InvalidMessageException();
+                        }
+                        // check whether id exist in user list
+                        boolean exist = false;
+                        for (User u: userList) {
+                            if (u.getID().equals(senderID)) {
+                                exist = true;
+                            }
+                        }
+                        if (exist) {
+                            // user id already exist error
+                            throw new InvalidMessageException();
+                        } else {
+                            // create the user and add it into userList
+                            User user = new User(senderID, kpubC);
+                            userList.add(user);
+                            userDataXML.updateXml(userList);
+                            // tell the client success
+                            Message reply = new Message(Message.Type.SUCCESS);
+                            sendRSAMessage(outputToClient, reply, kpubC);
+                        }
+                    } catch (InvalidMessageException e) {
+                        Message reply = new Message(Message.Type.FAILED);
+                        sendRSAMessage(outputToClient, reply, kpubC);
+                    }
+                    break;
+                }
+                case LOGIN: {
+                    // get necessary info
+                    String senderID = message.getSenderID();
+                    byte[] encryptedTimeStamp = message.getEncryptedTimeStamp();
+                    // check info integrity
+                    if (encryptedTimeStamp.length == 0 || senderID == "") {
+                        // message miss info
+                        // TODO
+                    }
+
+                    // check whether id exist in user list
+                    for (User u: userList) {
+                        if (u.getID().equals(message.getSenderID())) {
+                            // get user public key
+                            Key kpubC = u.getKpubC();
+                            try {
+                                // check time stamp
+                                byte[] encryptTimeStamp = message.getEncryptedTimeStamp();
+                                byte[] timeStampBytes = new byte[0];
+                                try {
+                                    timeStampBytes = RSAKey.decrypt(encryptTimeStamp, kpubC);
+                                } catch (Exception e) {
+                                    // can not decrypt time stamp error
+                                    throw new InvalidMessageException();
+                                }
+                                long timeStamp = Long.parseLong(new String(timeStampBytes));
+                                long timeDiff = System.currentTimeMillis() - timeStamp;
+                                if (timeDiff < 0 || timeDiff > MAX_TIME_DIFF) {
+                                    // time stamp out of date error
+                                    throw new InvalidMessageException();
+                                }
+                                // generate AES key
+                                Key kcs = AESKey.geneKey();
+                                Message reply = new Message(Message.Type.SUCCESS);
+                                byte[] content = Base64.getEncoder().encode(kcs.getEncoded());
+                                reply.setContent(content);
+                                sendRSAMessage(outputToClient, reply, kpubC);
+                            } catch (InvalidMessageException e) {
+                                Message reply = new Message(Message.Type.FAILED);
+                                sendRSAMessage(outputToClient, reply, kpubC);
+                            }
                         }
                     }
-                } else {
-                    // time stamp out of date error
-                    reply = new Message(Message.Type.FAILED, "", "");
-                    reply.setContent("time out");
                 }
-                sendRSAMessage(outputToClient, reply, message.getSenderPubKey());
             }
-            catch (IOException e) {
-                // socket error
-                System.err.println("socket error");
-            } catch (ClassNotFoundException e) {
-                // bytes array can not deserialize to Message object error
-                System.err.println("bytes array can not deserialize");
-            } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
-                // can not decrypt message error
-                System.err.println("can not decrypt message error");
-            }
+
 
         }
 
         public void sendRSAMessage(OutputStream outputToClient, Message message, Key key) {
+            // add time stamp
+            String timeStampStr = System.currentTimeMillis()+"";
             try {
-                // add time stamp
-                String timeStampStr = System.currentTimeMillis()+"";
                 message.setEncryptedTimeStamp(RSAKey.encrypt(timeStampStr.getBytes(), kpriS));
-                // encrypt the message
-                byte[] messageBytes = Message.writeObject(message);
-                int segmentNum = messageBytes.length/MESSAGE_SEGMENT_LENGTH;
-                int remainder = messageBytes.length%MESSAGE_SEGMENT_LENGTH;
-                int replyLength;
-                if (remainder == 0) {
-                    replyLength = segmentNum*STREAM_SEGMENT_LENGTH;
-                } else {
-                    replyLength = (segmentNum+1)*STREAM_SEGMENT_LENGTH;
-                }
+            } catch (Exception e) {
+                // can not encrypt error
+                // TODO
+            }
+            // encrypt the message
+            byte[] messageBytes = new byte[0];
+            try {
+                messageBytes = Message.writeObject(message);
+            } catch (IOException e) {
+                // can not serialize error
+                // TODO
+            }
+            int segmentNum = messageBytes.length/MESSAGE_SEGMENT_LENGTH;
+            int remainder = messageBytes.length%MESSAGE_SEGMENT_LENGTH;
+            int replyLength;
+            if (remainder == 0) {
+                replyLength = segmentNum*STREAM_SEGMENT_LENGTH;
+            } else {
+                replyLength = (segmentNum+1)*STREAM_SEGMENT_LENGTH;
+            }
+            try {
                 new DataOutputStream(outputToClient).writeInt(replyLength);
-                for (int i = 0; i < segmentNum; i++) {
-                    byte[] bytes = new byte[MESSAGE_SEGMENT_LENGTH];
-                    for (int j = 0; j < bytes.length; j++) {
-                        bytes[j] = messageBytes[i*MESSAGE_SEGMENT_LENGTH + j];
-                    }
-                    byte[] encryptBytes = RSAKey.encrypt(bytes, key);
-                    outputToClient.write(encryptBytes);
+            } catch (IOException e) {
+                // socket error
+                // TODO
+            }
+            for (int i = 0; i < segmentNum; i++) {
+                byte[] bytes = new byte[MESSAGE_SEGMENT_LENGTH];
+                for (int j = 0; j < bytes.length; j++) {
+                    bytes[j] = messageBytes[i*MESSAGE_SEGMENT_LENGTH + j];
                 }
-                if (remainder != 0) {
-                    byte[] bytes = new byte[remainder];
-                    for (int k = 0; k < remainder; k++) {
-                        bytes[k] = messageBytes[(segmentNum)*MESSAGE_SEGMENT_LENGTH+k];
-                    }
-                    byte[] encryptBytes = RSAKey.encrypt(bytes, key);
-                    outputToClient.write(encryptBytes);
+                byte[] encryptBytes = new byte[0];
+                try {
+                    encryptBytes = RSAKey.encrypt(bytes, key);
+                } catch (Exception e) {
+                    // can not encrypt error
+                    // TODO
                 }
+                try {
+                    outputToClient.write(encryptBytes);
+                } catch (IOException e) {
+                    // socket error
+                    // TODO
+                }
+            }
+            if (remainder != 0) {
+                byte[] bytes = new byte[remainder];
+                for (int k = 0; k < remainder; k++) {
+                    bytes[k] = messageBytes[(segmentNum)*MESSAGE_SEGMENT_LENGTH+k];
+                }
+                byte[] encryptBytes = new byte[0];
+                try {
+                    encryptBytes = RSAKey.encrypt(bytes, key);
+                } catch (Exception e) {
+                    // can not encrypt error
+                    // TODO
+
+                }
+                try {
+                    outputToClient.write(encryptBytes);
+                } catch (IOException e) {
+                    // socket error
+                    // TODO
+                }
+            }
+            try {
                 outputToClient.write(messageBytes);
                 outputToClient.flush();
-            } catch (IOException | NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException e) {
-                e.printStackTrace();
+            } catch (IOException e) {
+                // socket error
+                // TODO
             }
         }
     }

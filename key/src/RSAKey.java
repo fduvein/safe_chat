@@ -21,17 +21,15 @@ public class RSAKey {
         return null;
     }
 
-    public static byte[] decrypt(byte[] encryptMessageBytes, Key key) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+    public static byte[] decrypt(byte[] encryptMessageBytes, Key key) throws Exception {
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.DECRYPT_MODE, key);
-        byte[] messageBytes = cipher.doFinal(encryptMessageBytes);
-        return messageBytes;
+        return cipher.doFinal(encryptMessageBytes);
     }
 
-    public static byte[] encrypt(byte[] messageBytes, Key key) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException, NoSuchPaddingException, NoSuchAlgorithmException {
+    public static byte[] encrypt(byte[] messageBytes, Key key) throws Exception {
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.ENCRYPT_MODE, key);
-        byte[] encryptMessageBytes = cipher.doFinal(messageBytes);
-        return encryptMessageBytes;
+        return cipher.doFinal(messageBytes);
     }
 }

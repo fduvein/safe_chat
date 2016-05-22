@@ -11,11 +11,9 @@ public class Message implements Serializable {
     private Key senderPubKey;
     private Key receiverPubKey;
     private byte[] encryptedTimeStamp;
-    private String content;
+    private byte[] content;
 
-    public Message(Type type, String senderID, String receiverID) {
-        this.senderID = senderID;
-        this.receiverID = receiverID;
+    public Message(Type type) {
         this.type = type;
     }
 
@@ -80,11 +78,11 @@ public class Message implements Serializable {
         this.encryptedTimeStamp = encryptedTimeStamp;
     }
 
-    public String getContent() {
+    public byte[] getContent() {
         return content;
     }
 
-    public void setContent(String content) {
+    public void setContent(byte[] content) {
         this.content = content;
     }
 
