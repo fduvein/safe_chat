@@ -60,14 +60,14 @@ KAB = KBA
 
 4 用户协商对称密钥KAB,KBA
 	4.1 由A生成一个对称密钥（AES）为KAB,KBA
-	4.2 A向服务器发送KAS(FORWARD+IDA+IDB+KpubB(SESSION_KEY+KBA+KpriA(TIME)))
-	4.3 服务器接收到后，判断AB之间是否是好友，如果不是，告知A，如果是，转发KSB(FORWARD+IDA+IDB+KpubB(SESSION_KEY+KBA+KpriA(TIME)))给B
+	4.2 A向服务器发送KAS(NEGO_SESSION_KEY+IDA+IDB+KpubB(NEGO_SESSION_KEY+KBA+KpriA(TIME)))
+	4.3 服务器接收到后，判断AB之间是否是好友，如果不是，告知A，如果是，转发KSB(NEGO_SESSION_KEY+IDA+IDB+KpubB(NEGO_SESSION_KEY+KBA+KpriA(TIME)))给B
 	4.4 B接受到消息后解密
 	4.5 解密成功
 		4.5.1 储存KBA
-		4.5.2向服务器发送消息KBS(FORWARD+IDB+IDA+KpubA(SUCCESS+KpriB(TIME)))
+		4.5.2 向服务器发送消息KBS(NEGO_SESSION_KEY+IDB+IDA+KpubA(SUCCESS+KpriB(TIME)))
 	4.6 解密失败
-		4.6.1 向服务器发送消息KBS(FORWARD+IDB+IDA+KpubA(FAILED+KpriB(TIME)))
+		4.6.1 向服务器发送消息KBS(NEGO_SESSION_KEY+IDB+IDA+KpubA(FAILED+KpriB(TIME)))
 	4.7 服务器将消息转发给A
 	4.8 A判断消息内容
 	4.9 SUCCESS，储存KAB，接下来与B通信都是用KAB
@@ -76,13 +76,10 @@ KAB = KBA
 5 用户聊天
 	5.1 需要发送的文本信息为T
 	5.2 AB之间已经共享对称秘钥KAB，KBA
-	5.3 所有消息格式都是KAS(FORWARD+IDA+IDB+KAB(CHAT+T+KAB(TIME))+KAS(TIME))
+	5.3 所有消息格式都是KAS(CHAT+IDA+IDB+KAB(CHAT+T+KAB(TIME))+KAS(TIME))
 
 6 获得好友列表
 	6.1 C向服务器发送消息KCS(FRIEND_LIST+IDC+KCS(TIME))
 	6.2 服务器返回消息KSC(FRIEND_LIST+friend_id_list+KSC(TIME))
 
-7 查询用户公钥
-	7.1 C向服务器发送消息KCS(QUERY+IDC+IDQ+KCS(TIME))
-	7.2 服务器返回消息KSC(QUERY+KpubQ+KSC(TIME))
 	

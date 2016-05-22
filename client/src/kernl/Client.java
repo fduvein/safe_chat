@@ -6,9 +6,11 @@ import message.InvalidMessageException;
 import message.Message;
 
 import javax.crypto.spec.SecretKeySpec;
+import javax.swing.*;
 import java.io.*;
 import java.net.Socket;
 import java.security.Key;
+import java.util.ArrayList;
 import java.util.Base64;
 
 /**
@@ -24,9 +26,11 @@ public class Client {
 
     private Key kpubS;
 
-    private OutputStream toServer;
-    private InputStream fromServer;
+    private Socket socket;
 
+    private User user;
+
+    private Key kcs;
 
 
     public static void main(String[] args) {
@@ -48,9 +52,7 @@ public class Client {
                 publicKeyInputStream.close();
             }
             // construct socket with server
-            Socket socket = new Socket(HOST, PORT);
-            fromServer = socket.getInputStream();
-            toServer = socket.getOutputStream();
+            socket = new Socket(HOST, PORT);
         } catch (IOException e) {
             // tell user connection not available
         } catch (ClassNotFoundException e) {
@@ -58,50 +60,9 @@ public class Client {
         }
     }
 
-    public void sendRSAMessage(Message message, Key key) {
-        try {
-            // add time stamp
-            String messageTimeStamp = System.currentTimeMillis() + "";
-            message.setEncryptedTimeStamp(MyRSAKey.encrypt(messageTimeStamp.getBytes(), key));
-            byte[] messageBytes = Message.writeObject(message);
-            // encrypt the message
-            int segmentNum = messageBytes.length / MESSAGE_SEGMENT_LENGTH;
-            int remainder = messageBytes.length % MESSAGE_SEGMENT_LENGTH;
-            int messageLength;
-            if (remainder == 0) {
-                messageLength = segmentNum * STREAM_SEGMENT_LENGTH;
-            } else {
-                messageLength = (segmentNum + 1) * STREAM_SEGMENT_LENGTH;
-            }
-            new DataOutputStream(toServer).writeInt(messageLength);
-            for (int i = 0; i < segmentNum; i++) {
-                byte[] bytes = new byte[MESSAGE_SEGMENT_LENGTH];
-                for (int j = 0; j < bytes.length; j++) {
-                    bytes[j] = messageBytes[i * MESSAGE_SEGMENT_LENGTH + j];
-                }
-                byte[] encryptBytes = MyRSAKey.encrypt(bytes, kpubS);
-                toServer.write(encryptBytes);
-            }
-            if (remainder != 0) {
-                byte[] bytes = new byte[remainder];
-                for (int k = 0; k < remainder; k++) {
-                    bytes[k] = messageBytes[(segmentNum) * MESSAGE_SEGMENT_LENGTH + k];
-                }
-                byte[] encryptBytes = MyRSAKey.encrypt(bytes, kpubS);
-                toServer.write(encryptBytes);
-            }
-            toServer.flush();
-        } catch (IOException e) {
-            // socket error
-            // TODO
-        } catch (Exception e) {
-            // can not encrypt error
-            // TODO
-        }
-    }
-
     public String register(String userID) {
         User user = new User(userID);
+        user.geneKeyPair();
         Message message = new Message(Message.Type.REGISTER);
         message.setSenderID(userID);
         // add user public key
@@ -110,6 +71,7 @@ public class Client {
         sendRSAMessage(message, user.getKpriC());
         // wait server to response and get the reply from server
         try {
+            InputStream fromServer = socket.getInputStream();
             int messageLength = new DataInputStream(fromServer).readInt();
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             for (int i = 0; i < messageLength; i += STREAM_SEGMENT_LENGTH) {
@@ -184,6 +146,7 @@ public class Client {
 
         // wait server to response and get the reply from server
         try {
+            InputStream fromServer = socket.getInputStream();
             int messageLength = new DataInputStream(fromServer).readInt();
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             for (int i = 0; i < messageLength; i += STREAM_SEGMENT_LENGTH) {
@@ -233,9 +196,12 @@ public class Client {
 
                 // get KCS
                 byte[] decodedKey = Base64.getDecoder().decode(reply.getContent());
-                Key kcs = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
-
-
+                kcs = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
+                user = new User(userID);
+                user.setKpriC(kpriC);
+                getFriendList();
+                ListenToServer listenToServer = new ListenToServer(socket, user, kcs);
+                new Thread(listenToServer).start();
                 return "login success";
             } else if (reply.getType() == Message.Type.FAILED) {
                 return "login fail";
@@ -249,15 +215,182 @@ public class Client {
         }
     }
 
+    public void friending(String friendID) {
+        Message message = new Message(Message.Type.FRIENDING);
+        message.setSenderID(user.getUserID());
+        message.setReceiverID(friendID);
+        sendAESMessage(message);
+    }
 
-    public class ConnectToServer implements Runnable {
+    public void yesToFriending(String askerID) {
+        Message message = new Message(Message.Type.YES_TO_FRIENDING);
+        message.setSenderID(user.getUserID());
+        message.setReceiverID(askerID);
+        sendAESMessage(message);
+    }
+
+    public void noToFriending(String askerID) {
+        Message message = new Message(Message.Type.NO_TO_FRIENDING);
+        message.setSenderID(user.getUserID());
+        message.setReceiverID(askerID);
+        sendAESMessage(message);
+    }
+
+    public void negoSessionKey(String receiverID) {
+        // get receiver public key
+        Key kpubR = null;
+        for (Friend f: user.getFriendList()) {
+            if (f.getId().equals(receiverID)) {
+                if (f.getSessionKey() == null) {
+                    return;
+                } else {
+                    kpubR = f.getPublicKey();
+                }
+            }
+        }
+        Message subMessage = new Message(Message.Type.NEGO_SESSION_KEY);
+        // generate a session key
+        Key kcc = MyAESKey.geneKey();
+        subMessage.setSessionKey(kcc);
+        // add time stamp
+        String messageTimeStamp = System.currentTimeMillis() + "";
+        try {
+            subMessage.setEncryptedTimeStamp(MyRSAKey.encrypt(messageTimeStamp.getBytes(), user.getKpriC()));
+        } catch (Exception e) {
+            System.err.println("can not encrypt");
+        }
+        byte[] messageBytes = new byte[0];
+        try {
+            messageBytes = Message.writeObject(subMessage);
+        } catch (IOException e) {
+            System.err.println("can not serialize message");
+        }
+        // encrypt the message
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        int segmentNum = messageBytes.length / MESSAGE_SEGMENT_LENGTH;
+        int remainder = messageBytes.length % MESSAGE_SEGMENT_LENGTH;
+        for (int i = 0; i < segmentNum; i++) {
+            byte[] bytes = new byte[MESSAGE_SEGMENT_LENGTH];
+            for (int j = 0; j < bytes.length; j++) {
+                bytes[j] = messageBytes[i * MESSAGE_SEGMENT_LENGTH + j];
+            }
+            byte[] encryptBytes = new byte[0];
+            try {
+                encryptBytes = MyRSAKey.encrypt(bytes, kpubR);
+            } catch (Exception e) {
+                System.err.println("can not encrypt message");
+            }
+            try {
+                byteArrayOutputStream.write(encryptBytes);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        if (remainder != 0) {
+            byte[] bytes = new byte[remainder];
+            for (int k = 0; k < remainder; k++) {
+                bytes[k] = messageBytes[(segmentNum) * MESSAGE_SEGMENT_LENGTH + k];
+            }
+            byte[] encryptBytes = new byte[0];
+            try {
+                encryptBytes = MyRSAKey.encrypt(bytes, kpubS);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            try {
+                byteArrayOutputStream.write(encryptBytes);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        byte[] content = byteArrayOutputStream.toByteArray();
+        Message message = new Message(Message.Type.NEGO_SESSION_KEY);
+        message.setSenderID(user.getUserID());
+        message.setReceiverID(user.getUserID());
+        message.setContent(content);
+        sendAESMessage(message);
+    }
+
+    private void getFriendList() {
+        Message message = new Message(Message.Type.FRIEND_LIST);
+        message.setSenderID(user.getUserID());
+        sendAESMessage(message);
+    }
+
+    public void sendRSAMessage(Message message, Key key) {
+        try {
+            OutputStream toServer = socket.getOutputStream();
+            // add time stamp
+            String messageTimeStamp = System.currentTimeMillis() + "";
+            message.setEncryptedTimeStamp(MyRSAKey.encrypt(messageTimeStamp.getBytes(), key));
+            byte[] messageBytes = Message.writeObject(message);
+            // encrypt the message
+            int segmentNum = messageBytes.length / MESSAGE_SEGMENT_LENGTH;
+            int remainder = messageBytes.length % MESSAGE_SEGMENT_LENGTH;
+            int messageLength;
+            if (remainder == 0) {
+                messageLength = segmentNum * STREAM_SEGMENT_LENGTH;
+            } else {
+                messageLength = (segmentNum + 1) * STREAM_SEGMENT_LENGTH;
+            }
+            new DataOutputStream(toServer).writeInt(messageLength);
+            for (int i = 0; i < segmentNum; i++) {
+                byte[] bytes = new byte[MESSAGE_SEGMENT_LENGTH];
+                for (int j = 0; j < bytes.length; j++) {
+                    bytes[j] = messageBytes[i * MESSAGE_SEGMENT_LENGTH + j];
+                }
+                byte[] encryptBytes = MyRSAKey.encrypt(bytes, kpubS);
+                toServer.write(encryptBytes);
+            }
+            if (remainder != 0) {
+                byte[] bytes = new byte[remainder];
+                for (int k = 0; k < remainder; k++) {
+                    bytes[k] = messageBytes[(segmentNum) * MESSAGE_SEGMENT_LENGTH + k];
+                }
+                byte[] encryptBytes = MyRSAKey.encrypt(bytes, kpubS);
+                toServer.write(encryptBytes);
+            }
+            toServer.flush();
+        } catch (IOException e) {
+            // socket error
+            // TODO
+        } catch (Exception e) {
+            // can not encrypt error
+            // TODO
+        }
+    }
+
+    public void sendAESMessage(Message message) {
+        try {
+            OutputStream toServer = socket.getOutputStream();
+            // add time stamp
+            String timeStampStr = System.currentTimeMillis()+"";
+            message.setEncryptedTimeStamp(MyAESKey.encrypt(timeStampStr.getBytes(), kcs));
+            byte[] messageBytes = Message.writeObject(message);
+            byte[] encryptedMessageBytes = MyAESKey.encrypt(messageBytes, kcs);
+            int messageLength = encryptedMessageBytes.length;
+            toServer.write(messageLength);
+            toServer.write(encryptedMessageBytes);
+            toServer.flush();
+            toServer.close();
+
+        } catch (IOException e) {
+            System.err.println("socket error");
+        } catch (Exception e) {
+            System.err.println("can not encrypt");
+        }
+
+    }
+
+
+    public class ListenToServer implements Runnable {
         private User user;
         private Key kcs;
         private Socket socket;
         private InputStream inputFromClient;
         private OutputStream outputToClient;
 
-        public ConnectToServer(Socket socket, User user, Key kcs) {
+        public ListenToServer(Socket socket, User user, Key kcs) {
             this.user = user;
         }
 
@@ -326,16 +459,22 @@ public class Client {
                 }
 
                 switch (subMessage.getType()) {
-                    case YES: {
+                    case FRIENDING: {
+                        String senderID = subMessage.getSenderID();
+                        int answer = JOptionPane.showOptionDialog(null, senderID + "want to make friends with you, accept or not", "Friend Request", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
 
+                        break;
                     }
-                    case NO: {
+                    case YES_TO_FRIENDING: {
+                        break;
+                    }
+                    case NO_TO_FRIENDING: {
                         break;
                     }
                     case CHAT: {
                         break;
                     }
-                    case SESSION_KEY: {
+                    case NEGO_SESSION_KEY: {
                         break;
                     }
                     default: {

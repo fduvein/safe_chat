@@ -14,6 +14,7 @@ public class Message implements Serializable {
     private Key receiverPubKey;
     private byte[] encryptedTimeStamp;
     private byte[] content;
+    private Key sessionKey;
     private Message subMessage;
 
     public Message(Type type) {
@@ -93,8 +94,24 @@ public class Message implements Serializable {
         return type;
     }
 
+    public Key getSessionKey() {
+        return sessionKey;
+    }
+
+    public void setSessionKey(Key sessionKey) {
+        this.sessionKey = sessionKey;
+    }
+
+    public Message getSubMessage() {
+        return subMessage;
+    }
+
+    public void setSubMessage(Message subMessage) {
+        this.subMessage = subMessage;
+    }
+
     public enum Type {
-        REGISTER, LOGIN, SUCCESS, FAILED, FRIENDING, YES, NO, SESSION_KEY, FORWARD, FRIEND_LIST, QUERY, CHAT
+        REGISTER, LOGIN, SUCCESS, FAILED, FRIENDING, YES_TO_FRIENDING, NO_TO_FRIENDING, NEGO_SESSION_KEY, FRIEND_LIST, QUERY, CHAT
     }
 
 }

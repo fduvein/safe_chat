@@ -29,7 +29,7 @@ public class Server {
     private Key kpriS;
 
     private ArrayList<User> userList;
-    private ArrayList<HandleAClient> onlineList;
+    private ArrayList<MaintainAClient> maintainAClientList;
     private UserDataXML userDataXML;
 
     public static void main(String[] args) {
@@ -65,7 +65,7 @@ public class Server {
         userList = userDataXML.getUserList();
 
         // init online list
-        onlineList = new ArrayList<>();
+        maintainAClientList = new ArrayList<>();
     }
 
 
@@ -233,9 +233,9 @@ public class Server {
                                 sendRSAMessage(outputToClient, reply, kpubC);
                                 // set threadUser online
                                 threadUser = user;
-                                onlineList.add(this);
-                                OnlineClient onlineClient = new OnlineClient(socket, kcs);
-                                new Thread(onlineClient).start();
+                                MaintainAClient maintainAClient = new MaintainAClient(socket, kcs, user);
+                                maintainAClientList.add(maintainAClient);
+                                new Thread(maintainAClient).start();
 
                             } catch (InvalidMessageException e) {
                                 Message reply = new Message(Message.Type.FAILED);
@@ -332,12 +332,15 @@ public class Server {
         }
     }
 
-    private class OnlineClient implements Runnable {
+    private class MaintainAClient implements Runnable {
         private Socket socket;
         private Key kcs;
+        private User threadUser;
 
-        public OnlineClient(Socket socket, Key kcs) {
+        public MaintainAClient(Socket socket, Key kcs, User threadUser) {
             this.socket = socket;
+            this.kcs = kcs;
+            this.threadUser = threadUser;
         }
 
         @Override
@@ -410,15 +413,17 @@ public class Server {
                             }
                             // check whether receiver id is online
                             boolean online = false;
-                            for (HandleAClient thread: onlineList) {
+                            for (MaintainAClient thread: maintainAClientList) {
                                 if (thread.getThreadUser().getID().equals(receiverID)) {
                                     online = true;
-                                    System.out.println("This user is online");
+                                    Message message = new Message(Message.Type.FRIENDING);
+                                    message.setSenderID(subMessage.getSenderID());
+                                    message.setReceiverID(subMessage.getReceiverID());
+                                    thread.sendAESMessage(message);
                                 }
                             }
                             if (!online) {
-                                System.err.println("threadUser does not online");
-                                throw new InvalidMessageException();
+                                // tell client not online
                             }
                             break;
                         }
@@ -428,20 +433,48 @@ public class Server {
                         case QUERY: {
                             break;
                         }
-                        case FORWARD: {
-                            break;
-                        }
                         default: {
 
                         }
                     }
                 } catch (IOException e) {
                     // socket error
+                    System.err.println("online socket error");
                 } catch (InvalidMessageException e) {
                     System.err.println("online message error");
 
                 }
             }
+        }
+
+        public User getThreadUser() {
+            return threadUser;
+        }
+
+        public void setThreadUser(User threadUser) {
+            this.threadUser = threadUser;
+        }
+
+        public void sendAESMessage(Message message) {
+            try {
+                OutputStream toServer = socket.getOutputStream();
+                // add time stamp
+                String timeStampStr = System.currentTimeMillis()+"";
+                message.setEncryptedTimeStamp(MyAESKey.encrypt(timeStampStr.getBytes(), kcs));
+                byte[] messageBytes = Message.writeObject(message);
+                byte[] encryptedMessageBytes = MyAESKey.encrypt(messageBytes, kcs);
+                int messageLength = encryptedMessageBytes.length;
+                toServer.write(messageLength);
+                toServer.write(encryptedMessageBytes);
+                toServer.flush();
+                toServer.close();
+
+            } catch (IOException e) {
+                System.err.println("socket error");
+            } catch (Exception e) {
+                System.err.println("can not encrypt");
+            }
+
         }
     }
 }
