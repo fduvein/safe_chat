@@ -76,7 +76,7 @@ KAB = KBA
 5 用户聊天
 	5.1 需要发送的文本信息为T
 	5.2 AB之间已经共享对称秘钥KAB，KBA
-	5.3 所有消息格式都是KAS(FORWARD+IDA+IDB+KAB(CHAT+T+KAS(TIME)))
+	5.3 所有消息格式都是KAS(FORWARD+IDA+IDB+KAB(CHAT+T+KAB(TIME))+KAS(TIME))
 
 6 获得好友列表
 	6.1 C向服务器发送消息KCS(FRIEND_LIST+IDC+KCS(TIME))

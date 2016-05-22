@@ -14,6 +14,7 @@ public class Message implements Serializable {
     private Key receiverPubKey;
     private byte[] encryptedTimeStamp;
     private byte[] content;
+    private Message subMessage;
 
     public Message(Type type) {
         this.type = type;
