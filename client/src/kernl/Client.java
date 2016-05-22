@@ -11,7 +11,6 @@ import javax.swing.*;
 import java.io.*;
 import java.net.Socket;
 import java.security.Key;
-import java.util.ArrayList;
 import java.util.Base64;
 
 /**
@@ -29,7 +28,7 @@ public class Client {
     private Socket socket;
 
     private User user;
-private ChatPanel chatPanel;
+    private ChatPanel chatPanel;
     private Key kcs;
 
 
@@ -43,7 +42,7 @@ private ChatPanel chatPanel;
     }
 
     public Client(ChatPanel p1) {
-        chatPanel=p1;
+        chatPanel = p1;
         try {
             // read server public key
             File publicKeyFile = new File(SERVER_PUBLIC_KEY_FILE);
@@ -149,6 +148,7 @@ private ChatPanel chatPanel;
         try {
             InputStream fromServer = socket.getInputStream();
             int messageLength = new DataInputStream(fromServer).readInt();
+            // System.out.println(messageLength);
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             for (int i = 0; i < messageLength; i += STREAM_SEGMENT_LENGTH) {
                 byte[] encryptBytes = new byte[STREAM_SEGMENT_LENGTH];
@@ -164,6 +164,7 @@ private ChatPanel chatPanel;
                 byteArrayOutputStream.write(bytes);
             }
             byte[] messageBytes = byteArrayOutputStream.toByteArray();
+            // System.out.println(messageBytes.length);
             Message reply;
             try {
                 reply = Message.readObject(messageBytes);
@@ -203,6 +204,7 @@ private ChatPanel chatPanel;
                 //getFriendList();
                 ListenToServer listenToServer = new ListenToServer(socket, user, kcs);
                 new Thread(listenToServer).start();
+                // System.out.println("aaaaa");
                 return "login success";
             } else if (reply.getType() == Message.Type.FAILED) {
                 return "login fail";
@@ -221,6 +223,7 @@ private ChatPanel chatPanel;
         message.setSenderID(user.getUserID());
         message.setReceiverID(friendID);
         sendAESMessage(message);
+
     }
 
     public void yesToFriending(String askerID) {
@@ -240,7 +243,7 @@ private ChatPanel chatPanel;
     public void negoSessionKey(String receiverID) {
         // get receiver public key
         Key kpubR = null;
-        for (Friend f: user.getFriendList()) {
+        for (Friend f : user.getFriendList()) {
             if (f.getId().equals(receiverID)) {
                 if (f.getSessionKey() == null) {
                     return;
@@ -321,6 +324,7 @@ private ChatPanel chatPanel;
 
     public void sendRSAMessage(Message message, Key key) {
         try {
+            //System.out.println("b");
             OutputStream toServer = socket.getOutputStream();
             // add time stamp
             String messageTimeStamp = System.currentTimeMillis() + "";
@@ -364,20 +368,22 @@ private ChatPanel chatPanel;
 
     public void sendAESMessage(Message message) {
         try {
+
             OutputStream toServer = socket.getOutputStream();
-            // add time stamp
-            String timeStampStr = System.currentTimeMillis()+"";
+
+            String timeStampStr = System.currentTimeMillis() + "";
             message.setEncryptedTimeStamp(MyAESKey.encrypt(timeStampStr.getBytes(), kcs));
             byte[] messageBytes = Message.writeObject(message);
             byte[] encryptedMessageBytes = MyAESKey.encrypt(messageBytes, kcs);
             int messageLength = encryptedMessageBytes.length;
-            System.out.println(messageLength);
-            toServer.write(messageLength);
+           // System.out.println(messageLength);
+            new DataOutputStream(toServer).writeInt(messageLength);
             toServer.write(encryptedMessageBytes);
             toServer.flush();
             toServer.close();
 
         } catch (IOException e) {
+            e.printStackTrace();
             System.err.println("socket error");
         } catch (Exception e) {
             System.err.println("can not encrypt");
@@ -394,8 +400,8 @@ private ChatPanel chatPanel;
 
         public ListenToServer(Socket socket, User user, Key kcs) {
             this.user = user;
-            this.socket=socket;
-            this.kcs=kcs;
+            this.socket = socket;
+            this.kcs = kcs;
         }
 
         @Override
@@ -415,97 +421,95 @@ private ChatPanel chatPanel;
             Message subMessage;
             try {
                 int messageLength = new DataInputStream(inputFromServer).readInt();
-                byte[] encryptedMessageBytes = new byte[messageLength];
-                inputFromServer.read(encryptedMessageBytes);
-                // decrypt using kcs
-                byte[] messageBytes;
-                if (kcs != null) {
-                    try {
-                        messageBytes = MyAESKey.decrypt(encryptedMessageBytes, kcs);
-                    } catch (Exception e) {
-                        // can not decrypt
-                        System.err.println("can not decrypt aes");
+              //  System.out.println(messageLength);
+                if (messageLength > 0) {
+                    byte[] encryptedMessageBytes = new byte[messageLength];
+                    inputFromServer.read(encryptedMessageBytes);
+                    // decrypt using kcs
+                    byte[] messageBytes;
+                    if (kcs != null) {
+                        try {
+                            messageBytes = MyAESKey.decrypt(encryptedMessageBytes, kcs);
+                        } catch (Exception e) {
+                            // can not decrypt
+                            System.err.println("can not decrypt aes");
+                            throw new InvalidMessageException();
+                        }
+                    } else {
                         throw new InvalidMessageException();
                     }
-                } else {
-                    throw new InvalidMessageException();
-                }
-                try {
-                    subMessage = Message.readObject(messageBytes);
-                } catch (ClassNotFoundException e) {
-                    // can not deserialize message error
-                    System.err.println("can not deserialize message");
-                    throw new InvalidMessageException();
-                }
+                    try {
+                        subMessage = Message.readObject(messageBytes);
+                    } catch (ClassNotFoundException e) {
+                        // can not deserialize message error
+                        System.err.println("can not deserialize message");
+                        throw new InvalidMessageException();
+                    }
 
-                // check time stamp
-                byte[] subEncryptedTimeStamp = subMessage.getEncryptedTimeStamp();
-                if (subEncryptedTimeStamp.length == 0) {
-                    // no time stamp
-                    System.err.println("no time stamp");
-                    throw new InvalidMessageException();
-                }
-                byte[] subTimeStampBytes = new byte[0];
-                try {
-                    subTimeStampBytes = MyAESKey.decrypt(subEncryptedTimeStamp, kcs);
-                } catch (Exception e) {
-                    // can not decrypt time stamp error
-                    System.err.println("can not decrypt sub time stamp");
-                    throw new InvalidMessageException();
-                }
-                long subTimeStamp = Long.parseLong(new String(subTimeStampBytes));
-                long subTimeDiff = System.currentTimeMillis() - subTimeStamp;
-                if (subTimeDiff < 0 || subTimeDiff > MAX_TIME_DIFF) {
-                    // time stamp out of date error
-                    System.err.println("sub time stamp out of date");
-                    throw new InvalidMessageException();
-                }
+                    // check time stamp
+                    byte[] subEncryptedTimeStamp = subMessage.getEncryptedTimeStamp();
+                    if (subEncryptedTimeStamp.length == 0) {
+                        // no time stamp
+                        System.err.println("no time stamp");
+                        throw new InvalidMessageException();
+                    }
+                    byte[] subTimeStampBytes = new byte[0];
+                    try {
+                        subTimeStampBytes = MyAESKey.decrypt(subEncryptedTimeStamp, kcs);
+                    } catch (Exception e) {
+                        // can not decrypt time stamp error
+                        System.err.println("can not decrypt sub time stamp");
+                        throw new InvalidMessageException();
+                    }
+                    long subTimeStamp = Long.parseLong(new String(subTimeStampBytes));
+                    long subTimeDiff = System.currentTimeMillis() - subTimeStamp;
+                    if (subTimeDiff < 0 || subTimeDiff > MAX_TIME_DIFF) {
+                        // time stamp out of date error
+                        System.err.println("sub time stamp out of date");
+                        throw new InvalidMessageException();
+                    }
 
-                switch (subMessage.getType()) {
-                    case FRIENDING: {
-                        String senderID = subMessage.getSenderID();
-                        int answer = JOptionPane.showOptionDialog(null, senderID + "want to make friends with you, accept or not", "Friend Request", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
-                        // send to server the answer
-                        Message reply;
-                        if (answer == 0) {
-                            reply = new Message(Message.Type.NO_TO_FRIENDING);
-                        } else {
-                            reply = new Message(Message.Type.YES_TO_FRIENDING);
+                    switch (subMessage.getType()) {
+                        case FRIENDING: {
+                            String senderID = subMessage.getSenderID();
+                            int answer = JOptionPane.showOptionDialog(null, senderID + "want to make friends with you, accept or not", "Friend Request", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
+                            // send to server the answer
+                            Message reply;
+                            if (answer == 0) {
+                                reply = new Message(Message.Type.NO_TO_FRIENDING);
+                            } else {
+                                reply = new Message(Message.Type.YES_TO_FRIENDING);
+                            }
+                            reply.setSenderID(user.getUserID());
+                            reply.setReceiverID(senderID);
+                            sendAESMessage(reply);
+                            break;
                         }
-                        reply.setSenderID(user.getUserID());
-                        reply.setReceiverID(senderID);
-                        sendAESMessage(reply);
-                        break;
-                    }
-                    case YES_TO_FRIENDING: {
-                        String senderID = subMessage.getSenderID();
-                        JOptionPane.showMessageDialog(null, "user "+senderID+"accept you friending request");
-                        break;
-                    }
-                    case NO_TO_FRIENDING: {
-                        String senderID = subMessage.getSenderID();
-                        JOptionPane.showMessageDialog(null, "user "+senderID+"accept you friending request");
-                        break;
-                    }
-                    case CHAT: {
-                        break;
-                    }
-                    case NEGO_SESSION_KEY: {
-
-                        break;
-                    }
-                    case FRIEND_LIST:{
-                        for (int i=0;i<subMessage.getFriendInfo().size();i++){
-                            user.addFriendIntoList(subMessage.getFriendInfo().get(i).getID(),subMessage.getFriendInfo().get(i).getKey());
+                        case YES_TO_FRIENDING: {
+                            String senderID = subMessage.getSenderID();
+                            JOptionPane.showMessageDialog(null, "user " + senderID + "accept you friending request");
+                            break;
                         }
-                        chatPanel.loadFriend(user.getFriendList());
-
-
-
-                        break;
-                    }
-                    default: {
-
+                        case NO_TO_FRIENDING: {
+                            String senderID = subMessage.getSenderID();
+                            JOptionPane.showMessageDialog(null, "user " + senderID + "accept you friending request");
+                            break;
+                        }
+                        case CHAT: {
+                            break;
+                        }
+                        case NEGO_SESSION_KEY: {
+                            break;
+                        }
+                        case FRIEND_LIST: {
+                            for (int i = 0; i < subMessage.getFriendInfo().size(); i++) {
+                                user.addFriendIntoList(subMessage.getFriendInfo().get(i).getID(), subMessage.getFriendInfo().get(i).getKey());
+                            }
+                            chatPanel.loadFriend(user.getFriendList());
+                            break;
+                        }
+                        default: {
+                        }
                     }
                 }
             } catch (IOException e) {

@@ -208,6 +208,7 @@ public class Server {
                             Key kpubC = user.getKpubC().getPublic();
                             //System.out.print(Base64.getEncoder().encodeToString(kpubC.getEncoded()));
                             try {
+
                                 // check time stamp
                                 byte[] timeStampBytes = new byte[0];
                                 try {
@@ -254,6 +255,7 @@ public class Server {
 
         public void sendRSAMessage(OutputStream outputToClient, Message message, Key key) {
             // add time stamp
+
             String timeStampStr = System.currentTimeMillis() + "";
             try {
                 message.setEncryptedTimeStamp(MyRSAKey.encrypt(timeStampStr.getBytes(), kpriS));
@@ -269,6 +271,7 @@ public class Server {
                 // can not serialize error
                 // TODO
             }
+            //System.out.println(messageBytes.length);
             int segmentNum = messageBytes.length / MESSAGE_SEGMENT_LENGTH;
             int remainder = messageBytes.length % MESSAGE_SEGMENT_LENGTH;
             int replyLength;
@@ -278,6 +281,7 @@ public class Server {
                 replyLength = (segmentNum + 1) * STREAM_SEGMENT_LENGTH;
             }
             try {
+                //  System.out.println(replyLength);
                 new DataOutputStream(outputToClient).writeInt(replyLength);
             } catch (IOException e) {
                 // socket error
@@ -290,6 +294,7 @@ public class Server {
                 }
                 byte[] encryptBytes = new byte[0];
                 try {
+
                     encryptBytes = MyRSAKey.encrypt(bytes, key);
                 } catch (Exception e) {
                     // can not encrypt error
@@ -316,6 +321,7 @@ public class Server {
 
                 }
                 try {
+                    //System.out.println(encryptBytes.length);
                     outputToClient.write(encryptBytes);
                 } catch (IOException e) {
                     // socket error
@@ -323,7 +329,7 @@ public class Server {
                 }
             }
             try {
-                outputToClient.write(messageBytes);
+             //   outputToClient.write(messageBytes);
                 outputToClient.flush();
             } catch (IOException e) {
                 // socket error
@@ -355,6 +361,7 @@ public class Server {
                 Message subMessage;
                 try {
                     int messageLength = new DataInputStream(inputFromClient).readInt();
+                    System.out.println(messageLength);
                     byte[] encryptedMessageBytes = new byte[messageLength];
                     inputFromClient.read(encryptedMessageBytes);
                     // decrypt using kcs
@@ -445,7 +452,7 @@ public class Server {
                             }
                             break;
                         }
-                        case CHAT:{
+                        case CHAT: {
                             String receiverID = subMessage.getReceiverID();
                             String senderID = subMessage.getSenderID();
                             Message message = new Message(Message.Type.CHAT);
@@ -459,7 +466,7 @@ public class Server {
                             }
                             break;
                         }
-                        case FILE:{
+                        case FILE: {
                             String receiverID = subMessage.getReceiverID();
                             String senderID = subMessage.getSenderID();
                             Message message = new Message(Message.Type.FILE);
@@ -542,6 +549,7 @@ public class Server {
                     }
                 } catch (IOException e) {
                     // socket error
+                    e.printStackTrace();
                     System.err.println("online socket error");
                 } catch (InvalidMessageException e) {
                     System.err.println("online message error");
@@ -569,6 +577,7 @@ public class Server {
 
         public void sendAESMessage(Message message) {
             try {
+
                 OutputStream toServer = socket.getOutputStream();
                 // add time stamp
                 String timeStampStr = System.currentTimeMillis() + "";
@@ -576,8 +585,8 @@ public class Server {
                 byte[] messageBytes = Message.writeObject(message);
                 byte[] encryptedMessageBytes = MyAESKey.encrypt(messageBytes, kcs);
                 int messageLength = encryptedMessageBytes.length;
-                System.out.println(messageLength);
-                toServer.write(messageLength);
+              //  System.out.println(messageLength);
+                new DataOutputStream(toServer).writeInt(messageLength);
                 toServer.write(encryptedMessageBytes);
                 toServer.flush();
                 toServer.close();

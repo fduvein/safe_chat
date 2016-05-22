@@ -99,6 +99,7 @@ public class LoginPanel extends JPanel {
                         JOptionPane.showMessageDialog(null, "illegal password");
                     }else{
                     if (checkId(lid)  ) {
+
                         String aa = MainFrame.client.login(lid, password);
                         l4.setText(aa);
                         if (aa.equals("login success")) {
