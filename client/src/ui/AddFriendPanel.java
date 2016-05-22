@@ -41,11 +41,26 @@ public class AddFriendPanel extends JPanel {
         public void actionPerformed(ActionEvent e) {
             //String friendemail = id.getText();
             //add code here
-
-            //if necessary show some info in l4
-            //l4.setText(return infomation);
-
+            String a = id.getText();
+            if (checkId(a)) {
+                MainFrame.client.friending(a);
+            } else {
+                l4.setText("illegal ID");
+            }
         }
+    }
+
+    private boolean checkId(String id) {
+        if (id.length() > 15 || id.length() == 0) {
+            return false;
+        }
+        for (int i = 0; i < id.length(); i++) {
+            int a = id.charAt(i);
+            if (!((a > 47 && a < 58) || (a == 95) || (a > 96 && a < 123) || (a > 64 && a < 91))) {
+                return false;
+            }
+        }
+        return true;
     }
 
 }

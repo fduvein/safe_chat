@@ -24,8 +24,9 @@ public class MainFrame extends JFrame {
  static Client client;
     public MainFrame() {
         int x = 900, y = 550;
-//        it2.setEnabled(false);
-//        it3.setEnabled(false);
+        it2.setEnabled(false);
+        it3.setEnabled(false);
+        it4.setEnabled(false);
         m1.add(it1);
         m1.add(it2);
         m1.add(it3);

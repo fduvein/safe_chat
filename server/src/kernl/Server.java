@@ -346,10 +346,8 @@ public class Server {
         @Override
         public void run() {
             InputStream inputFromClient = null;
-            OutputStream outputToClient = null;
             try {
                 inputFromClient = socket.getInputStream();
-                outputToClient = socket.getOutputStream();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -578,6 +576,7 @@ public class Server {
                 byte[] messageBytes = Message.writeObject(message);
                 byte[] encryptedMessageBytes = MyAESKey.encrypt(messageBytes, kcs);
                 int messageLength = encryptedMessageBytes.length;
+                System.out.println(messageLength);
                 toServer.write(messageLength);
                 toServer.write(encryptedMessageBytes);
                 toServer.flush();

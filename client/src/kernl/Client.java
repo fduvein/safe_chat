@@ -10,7 +10,6 @@ import javax.swing.*;
 import java.io.*;
 import java.net.Socket;
 import java.security.Key;
-import java.util.ArrayList;
 import java.util.Base64;
 
 /**
@@ -199,7 +198,7 @@ public class Client {
                 kcs = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
                 user = new User(userID);
                 user.setKpriC(kpriC);
-                getFriendList();
+                //getFriendList();
                 ListenToServer listenToServer = new ListenToServer(socket, user, kcs);
                 new Thread(listenToServer).start();
                 return "login success";
@@ -369,6 +368,7 @@ public class Client {
             byte[] messageBytes = Message.writeObject(message);
             byte[] encryptedMessageBytes = MyAESKey.encrypt(messageBytes, kcs);
             int messageLength = encryptedMessageBytes.length;
+            System.out.println(messageLength);
             toServer.write(messageLength);
             toServer.write(encryptedMessageBytes);
             toServer.flush();
@@ -387,18 +387,18 @@ public class Client {
         private User user;
         private Key kcs;
         private Socket socket;
-        private InputStream inputFromClient;
-        private OutputStream outputToClient;
+        private InputStream inputFromServer;
 
         public ListenToServer(Socket socket, User user, Key kcs) {
             this.user = user;
+            this.socket=socket;
+            this.kcs=kcs;
         }
 
         @Override
         public void run() {
             try {
-                inputFromClient = socket.getInputStream();
-                outputToClient = socket.getOutputStream();
+                inputFromServer = socket.getInputStream();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -411,9 +411,9 @@ public class Client {
         public void handleAMessage() {
             Message subMessage;
             try {
-                int messageLength = new DataInputStream(inputFromClient).readInt();
+                int messageLength = new DataInputStream(inputFromServer).readInt();
                 byte[] encryptedMessageBytes = new byte[messageLength];
-                inputFromClient.read(encryptedMessageBytes);
+                inputFromServer.read(encryptedMessageBytes);
                 // decrypt using kcs
                 byte[] messageBytes;
                 if (kcs != null) {

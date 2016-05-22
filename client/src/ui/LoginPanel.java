@@ -95,7 +95,7 @@ public class LoginPanel extends JPanel {
                     // if(password!=null) //to check whether the password is read
                     String lid = id.getText();
                     if(checkId(lid)&&(password!=null)){
-                        String aa="";//MainFrame.client.login(lid,password);
+                        String aa=MainFrame.client.login(lid,password);
                         l4.setText(aa);
                         if(aa.equals("login success")){
 
