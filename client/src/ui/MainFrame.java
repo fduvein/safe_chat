@@ -67,7 +67,7 @@ public class MainFrame extends JFrame {
     public static void main(String[] args) {
         MainFrame frame = new MainFrame();
         frame.setSize(1000, 600);
-        frame.setTitle("Client");
+        frame.setTitle("kernl.Client");
         frame.setLocationRelativeTo(null);
 
         frame.setVisible(true);

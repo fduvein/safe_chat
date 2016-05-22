@@ -1,3 +1,10 @@
+package kernl;
+
+import key.MyAESKey;
+import key.MyRSAKey;
+import message.InvalidMessageException;
+import message.Message;
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -85,7 +92,7 @@ public class Server {
                     inputFromClient.read(encryptedBytes);
                     byte[] bytes = new byte[0];
                     try {
-                        bytes = RSAKey.decrypt(encryptedBytes, kpriS);
+                        bytes = MyRSAKey.decrypt(encryptedBytes, kpriS);
                     } catch (Exception e) {
                         // can not decrypt message error
                         // TODO
@@ -119,7 +126,7 @@ public class Server {
                         // check time stamp
                         byte[] timeStampBytes = new byte[0];
                         try {
-                            timeStampBytes = RSAKey.decrypt(encryptedTimeStamp, kpubC);
+                            timeStampBytes = MyRSAKey.decrypt(encryptedTimeStamp, kpubC);
                         } catch (Exception e) {
                             // can not decrypt time stamp error
                             throw new InvalidMessageException();
@@ -181,7 +188,7 @@ public class Server {
                                 byte[] encryptTimeStamp = message.getEncryptedTimeStamp();
                                 byte[] timeStampBytes = new byte[0];
                                 try {
-                                    timeStampBytes = RSAKey.decrypt(encryptTimeStamp, kpubC);
+                                    timeStampBytes = MyRSAKey.decrypt(encryptTimeStamp, kpubC);
                                 } catch (Exception e) {
                                     // can not decrypt time stamp error
                                     throw new InvalidMessageException();
@@ -193,7 +200,7 @@ public class Server {
                                     throw new InvalidMessageException();
                                 }
                                 // generate AES key
-                                Key kcs = AESKey.geneKey();
+                                Key kcs = MyAESKey.geneKey();
                                 Message reply = new Message(Message.Type.SUCCESS);
                                 byte[] content = Base64.getEncoder().encode(kcs.getEncoded());
                                 reply.setContent(content);
@@ -214,7 +221,7 @@ public class Server {
             // add time stamp
             String timeStampStr = System.currentTimeMillis()+"";
             try {
-                message.setEncryptedTimeStamp(RSAKey.encrypt(timeStampStr.getBytes(), kpriS));
+                message.setEncryptedTimeStamp(MyRSAKey.encrypt(timeStampStr.getBytes(), kpriS));
             } catch (Exception e) {
                 // can not encrypt error
                 // TODO
@@ -248,7 +255,7 @@ public class Server {
                 }
                 byte[] encryptBytes = new byte[0];
                 try {
-                    encryptBytes = RSAKey.encrypt(bytes, key);
+                    encryptBytes = MyRSAKey.encrypt(bytes, key);
                 } catch (Exception e) {
                     // can not encrypt error
                     // TODO
@@ -267,7 +274,7 @@ public class Server {
                 }
                 byte[] encryptBytes = new byte[0];
                 try {
-                    encryptBytes = RSAKey.encrypt(bytes, key);
+                    encryptBytes = MyRSAKey.encrypt(bytes, key);
                 } catch (Exception e) {
                     // can not encrypt error
                     // TODO

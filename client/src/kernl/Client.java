@@ -1,3 +1,9 @@
+package kernl;
+
+import key.MyRSAKey;
+import message.InvalidMessageException;
+import message.Message;
+
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
 import java.net.Socket;
@@ -21,6 +27,7 @@ public class Client {
     private InputStream fromServer;
 
     public static void main(String[] args) {
+
         new Client();
     }
 
@@ -48,7 +55,7 @@ public class Client {
         try {
             // add time stamp
             String messageTimeStamp = System.currentTimeMillis()+"";
-            message.setEncryptedTimeStamp(RSAKey.encrypt(messageTimeStamp.getBytes(), key));
+            message.setEncryptedTimeStamp(MyRSAKey.encrypt(messageTimeStamp.getBytes(), key));
             byte[] messageBytes = Message.writeObject(message);
             // encrypt the message
             int segmentNum = messageBytes.length/MESSAGE_SEGMENT_LENGTH;
@@ -65,7 +72,7 @@ public class Client {
                 for (int j = 0; j < bytes.length; j++) {
                     bytes[j] = messageBytes[i*MESSAGE_SEGMENT_LENGTH + j];
                 }
-                byte[] encryptBytes = RSAKey.encrypt(bytes, kpubS);
+                byte[] encryptBytes = MyRSAKey.encrypt(bytes, kpubS);
                 toServer.write(encryptBytes);
             }
             if (remainder != 0) {
@@ -73,7 +80,7 @@ public class Client {
                 for (int k = 0; k < remainder; k++) {
                     bytes[k] = messageBytes[(segmentNum)*MESSAGE_SEGMENT_LENGTH+k];
                 }
-                byte[] encryptBytes = RSAKey.encrypt(bytes, kpubS);
+                byte[] encryptBytes = MyRSAKey.encrypt(bytes, kpubS);
                 toServer.write(encryptBytes);
             }
             toServer.write(messageBytes);
@@ -104,7 +111,7 @@ public class Client {
                 fromServer.read(encryptBytes);
                 byte[] bytes = new byte[0];
                 try {
-                    bytes = RSAKey.decrypt(encryptBytes, user.getKpriC());
+                    bytes = MyRSAKey.decrypt(encryptBytes, user.getKpriC());
                 } catch (Exception e) {
                     // can not decrypt error
                     throw new InvalidMessageException();
@@ -128,7 +135,7 @@ public class Client {
             Key kpubC = message.getSenderPubKey();
             byte[] replyTimeStampBytes = new byte[0];
             try {
-                replyTimeStampBytes = RSAKey.decrypt(encryptTimeStamp, kpubC);
+                replyTimeStampBytes = MyRSAKey.decrypt(encryptTimeStamp, kpubC);
             } catch (Exception e) {
                 // can not decrypt time stamp
                 throw new InvalidMessageException();
@@ -178,7 +185,7 @@ public class Client {
                 fromServer.read(encryptBytes);
                 byte[] bytes = new byte[0];
                 try {
-                    bytes = RSAKey.decrypt(encryptBytes, kpriC);
+                    bytes = MyRSAKey.decrypt(encryptBytes, kpriC);
                 } catch (Exception e) {
                     // can not decrypt error
                     throw new InvalidMessageException();
@@ -202,7 +209,7 @@ public class Client {
             Key kpubC = message.getSenderPubKey();
             byte[] replyTimeStampBytes = new byte[0];
             try {
-                replyTimeStampBytes = RSAKey.decrypt(encryptTimeStamp, kpubC);
+                replyTimeStampBytes = MyRSAKey.decrypt(encryptTimeStamp, kpubC);
             } catch (Exception e) {
                 // can not decrypt time stamp
                 throw new InvalidMessageException();

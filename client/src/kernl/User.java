@@ -1,3 +1,7 @@
+package kernl;
+
+import key.MyRSAKey;
+
 import java.security.Key;
 import java.security.KeyPair;
 
@@ -12,7 +16,7 @@ public class User {
     public User(String userID) {
         this.userID = userID;
         // generate client public-private key
-        KeyPair keyPair = RSAKey.geneKeyPair();
+        KeyPair keyPair = MyRSAKey.geneKeyPair();
         kpubC = keyPair.getPublic();
         kpriC = keyPair.getPrivate();
     }

@@ -25,7 +25,7 @@ public class ChatPanel extends JPanel {
     private JTextArea chat = new JTextArea();
     private JTextArea message = new JTextArea();
     private JLabel l4 = new JLabel();
-    private JButton send = new JButton("Send Message");
+    private JButton send = new JButton("Send message.Message");
     private JButton choose = new JButton("choose File");
     private JButton file = new JButton("Send File");
     private JTextField name = new JTextField();

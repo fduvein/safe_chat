@@ -1,3 +1,5 @@
+package message;
+
 /**
  * Created by mso on 16-5-22.
  */

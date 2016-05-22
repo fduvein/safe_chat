@@ -1,3 +1,5 @@
+package message;
+
 import java.io.*;
 import java.security.Key;
 
@@ -90,7 +92,7 @@ public class Message implements Serializable {
         return type;
     }
 
-    enum Type {
+    public enum Type {
         REGISTER, LOGIN, SUCCESS, FAILED,
     }
 
