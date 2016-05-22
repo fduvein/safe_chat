@@ -49,13 +49,13 @@ KAB = KBA
 		3.5.2 B收到消息，做出反应
 		3.5.3 B同意了
 			3.5.3.1 B在客户端显示
-			3.5.3.2 B向服务器发送KBS(YES+IDA+IDB+KBS(TIME))
+			3.5.3.2 B向服务器发送KBS(YES_TO_FRIENDING+IDA+IDB+KBS(TIME))
 		3.5.4 B不同意
-			3.5.4.1 B向服务器发送KBS(NO+IDA+IDB+KBS(TIME))
+			3.5.4.1 B向服务器发送KBS(NO_TO_FRIENDING+IDA+IDB+KBS(TIME))
 		3.5.5 服务器收到B的消息，验证B是否同意
 		3.5.6 同意了
 			3.5.6.1 服务器在数据库记录好友关系
-			3.5.6.2 服务器告知A同意了，并把B的公钥发给A
+			3.5.6.2 服务器告知A，B同意了，同时告知B更新好友列表KSB(FRIEND_LIST+friend_id_list+KSB(TIME))
 		3.5.7 没同意，告知A
 
 4 用户协商对称密钥KAB,KBA
@@ -85,8 +85,8 @@ KAB = KBA
 
 	
 7 DRM
-       7.1 用户向服务器购买文件息KAS(BUY+IDA+KAS(TIME))
-       7.2 服务器存储购买记录，传输文件和激活码给客户端KAS(BUY_SUCCESS+number+(MAC+FileContent)+KAS(TIME))
-       7.3 用户向服务器请求密钥KAS(ASK+record_id+file_id+IDA+KAS(TIME))
-       7.4 服务器返回密钥KAS(KEY+file_key+KAS(TIME))
+    7.1 用户向服务器购买文件息KAS(BUY+IDA+KAS(TIME))
+    7.2 服务器存储购买记录，传输文件和激活码给客户端KAS(BUY_SUCCESS+number+(MAC+FileContent)+KAS(TIME))
+    7.3 用户向服务器请求密钥KAS(ASK+record_id+file_id+IDA+KAS(TIME))
+    7.4 服务器返回密钥KAS(KEY+file_key+KAS(TIME))
 

@@ -462,19 +462,33 @@ public class Client {
                     case FRIENDING: {
                         String senderID = subMessage.getSenderID();
                         int answer = JOptionPane.showOptionDialog(null, senderID + "want to make friends with you, accept or not", "Friend Request", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
-
+                        // send to server the answer
+                        Message reply;
+                        if (answer == 0) {
+                            reply = new Message(Message.Type.NO_TO_FRIENDING);
+                        } else {
+                            reply = new Message(Message.Type.YES_TO_FRIENDING);
+                        }
+                        reply.setSenderID(user.getUserID());
+                        reply.setReceiverID(senderID);
+                        sendAESMessage(reply);
                         break;
                     }
                     case YES_TO_FRIENDING: {
+                        String senderID = subMessage.getSenderID();
+                        JOptionPane.showMessageDialog(null, "user "+senderID+"accept you friending request");
                         break;
                     }
                     case NO_TO_FRIENDING: {
+                        String senderID = subMessage.getSenderID();
+                        JOptionPane.showMessageDialog(null, "user "+senderID+"accept you friending request");
                         break;
                     }
                     case CHAT: {
                         break;
                     }
                     case NEGO_SESSION_KEY: {
+
                         break;
                     }
                     default: {
