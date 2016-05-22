@@ -95,9 +95,9 @@ public class LoginPanel extends JPanel {
                     String lid = id.getText();
                     if(checkId(lid)&&(password!=null)){
 
-                        String a=MainFrame.client.login(lid,password);
-                        l4.setText(a);
-                        if(a.equals("login success")){
+                        String aa=MainFrame.client.login(lid,password);
+                        l4.setText(aa);
+                        if(aa.equals("login success")){
 
                                                     it2.setEnabled(true);
                                                     it3.setEnabled(true);
