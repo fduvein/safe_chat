@@ -43,9 +43,6 @@ public class UserDataXML {
                 Element id = document.createElement("id");
                 id.setTextContent(u.getID());
                 user.appendChild(id);
-                Element kpub = document.createElement("kpub");
-                kpub.setTextContent(Base64.getEncoder().encodeToString(u.getKpubC().getEncoded()));
-                user.appendChild(kpub);
                 Element friendIDList = document.createElement("friendIDList");
                 for (String fID: u.getFriendsIDList()) {
                     Element friendID = document.createElement("friendID");
@@ -84,21 +81,16 @@ public class UserDataXML {
             NodeList userNodeList = root.getChildNodes();
             for (int i = 0; i < userNodeList.getLength(); i++) {
                 Node userNode = userNodeList.item(i);
-                String id = null;
+                if (userNode.getNodeType() != Node.ELEMENT_NODE) {
+                    continue;
+                }
+                String id = "";
                 Key kpub = null;
                 ArrayList<String> friendList = new ArrayList<>();
                 for (Node node = userNode.getFirstChild(); node != null; node = node.getNextSibling()) {
                     if (node.getNodeType() == Node.ELEMENT_NODE) {
                         if ("id".equals(node.getNodeName())) {
-                            System.out.println(node.getFirstChild().getNodeValue());
                             id = node.getFirstChild().getNodeValue();
-                        }
-                    }
-                    if (node.getNodeType() == Node.ELEMENT_NODE) {
-                        if ("kpub".equals(node.getNodeName())) {
-                            System.out.println(node.getFirstChild().getNodeValue());
-                            byte[] decodedKey = Base64.getDecoder().decode(node.getFirstChild().getNodeValue());
-                            kpub = new SecretKeySpec(decodedKey, 0, decodedKey.length, "RSA");
                         }
                     }
                     if (node.getNodeType() == Node.ELEMENT_NODE) {
@@ -116,7 +108,8 @@ public class UserDataXML {
                         }
                     }
                 }
-                User user = new User(id, kpub);
+                UserKey userKey = new UserKey(Server.USER_PUBLIC_KEY_FILE_PREFIX + id + ".key");
+                User user = new User(id, userKey);
                 user.setFriendsIDList(friendList);
                 ret.add(user);
             }

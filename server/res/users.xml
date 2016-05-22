@@ -2,7 +2,10 @@
 <userList>
 <user>
 <id>freemso</id>
-<kpub>MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCUYG5GYgRHpDdzcUp39B6z4k3uz6U4H8IM+OdN4Yz8pAG3H4iDe7dIw4vOmYLplqeQ3BaJU3Oo166uZDJADhPLykOyhRwdMOf+kkJnlliUD8zSfadRcYtwlVSM6NU1gC23s/PuJAB8ScLFZoLoZFlKCgjFoa+wpKiL4CIsqvsn8QIDAQAB</kpub>
+<friendIDList/>
+</user>
+<user>
+<id>tx</id>
 <friendIDList/>
 </user>
 </userList>

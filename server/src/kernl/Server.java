@@ -17,6 +17,7 @@ import java.util.Base64;
  */
 public class Server {
     private final int PORT = 8000;
+    public static final String USER_PUBLIC_KEY_FILE_PREFIX = "server/res/user_key/";
     private final String PUBLIC_KEY_FILE = "server/res/kpubS.key";
     private final String PRIVATE_KEY_FILE = "server/res/kpriS.key";
     private final String USER_DATA_FILE = "server/res/users.xml";
@@ -28,6 +29,7 @@ public class Server {
     private Key kpriS;
 
     private ArrayList<User> userList;
+    private ArrayList<HandleAClient> onlineList;
     private UserDataXML userDataXML;
 
     public static void main(String[] args) {
@@ -58,9 +60,12 @@ public class Server {
         kpubS = serverKey.getPublic();
         kpriS = serverKey.getPrivate();
 
-        // get user data
+        // get threadUser data
         userDataXML = new UserDataXML(USER_DATA_FILE);
         userList = userDataXML.getUserList();
+
+        // init online list
+        onlineList = new ArrayList<>();
     }
 
 
@@ -73,11 +78,22 @@ public class Server {
         return kpriS;
     }
 
-    private class HandleAClient implements Runnable{
+    private class HandleAClient implements Runnable {
         private Socket socket;
+        private Key kcs;
+        private User threadUser;
         public HandleAClient(Socket socket) {
             this.socket = socket;
         }
+
+        public User getThreadUser() {
+            return threadUser;
+        }
+
+        public void setThreadUser(User threadUser) {
+            this.threadUser = threadUser;
+        }
+
         public void run() {
             InputStream inputFromClient = null;
             OutputStream outputToClient = null;
@@ -129,6 +145,7 @@ public class Server {
                             timeStampBytes = MyRSAKey.decrypt(encryptedTimeStamp, kpubC);
                         } catch (Exception e) {
                             // can not decrypt time stamp error
+                            System.err.println("can not decrypt time stamp error");
                             throw new InvalidMessageException();
                         }
                         long timeStamp = 0;
@@ -136,14 +153,16 @@ public class Server {
                             timeStamp = Long.parseLong(new String(timeStampBytes));
                         } catch (NumberFormatException e) {
                             // time stamp format exception
+                            System.err.println("time stamp format exception");
                             throw new InvalidMessageException();
                         }
                         long timeDiff = System.currentTimeMillis() - timeStamp;
                         if (timeDiff < 0 || timeDiff > MAX_TIME_DIFF) {
-                            // time stamp out of data exception
+                            // time stamp out of date exception
+                            System.err.println("time stamp out of date exc");
                             throw new InvalidMessageException();
                         }
-                        // check whether id exist in user list
+                        // check whether id exist in threadUser list
                         boolean exist = false;
                         for (User u: userList) {
                             if (u.getID().equals(senderID)) {
@@ -151,13 +170,16 @@ public class Server {
                             }
                         }
                         if (exist) {
-                            // user id already exist error
+                            // threadUser id already exist error
+                            System.err.println("threadUser id already exist");
                             throw new InvalidMessageException();
                         } else {
-                            // create the user and add it into userList
-                            User user = new User(senderID, kpubC);
+                            // create the threadUser and add it into userList
+                            UserKey userKey = new UserKey(kpubC);
+                            User user = new User(senderID, userKey);
                             userList.add(user);
                             userDataXML.updateXml(userList);
+                            userKey.saveKeyTo(USER_PUBLIC_KEY_FILE_PREFIX + senderID + ".key");
                             // tell the client success
                             Message reply = new Message(Message.Type.SUCCESS);
                             sendRSAMessage(outputToClient, reply, kpubC);
@@ -175,42 +197,55 @@ public class Server {
                     // check info integrity
                     if (encryptedTimeStamp.length == 0 || senderID == "") {
                         // message miss info
+                        System.err.println("message miss info");
                         // TODO
                     }
 
-                    // check whether id exist in user list
-                    for (User u: userList) {
-                        if (u.getID().equals(message.getSenderID())) {
-                            // get user public key
-                            Key kpubC = u.getKpubC();
+                    // check whether id exist in threadUser list
+                    for (User user: userList) {
+                        if (user.getID().equals(message.getSenderID())) {
+                            // get threadUser public key
+                            Key kpubC = user.getKpubC().getPublic();
+                            //System.out.print(Base64.getEncoder().encodeToString(kpubC.getEncoded()));
                             try {
                                 // check time stamp
-                                byte[] encryptTimeStamp = message.getEncryptedTimeStamp();
                                 byte[] timeStampBytes = new byte[0];
                                 try {
-                                    timeStampBytes = MyRSAKey.decrypt(encryptTimeStamp, kpubC);
+                                    timeStampBytes = MyRSAKey.decrypt(encryptedTimeStamp, kpubC);
                                 } catch (Exception e) {
                                     // can not decrypt time stamp error
+                                    System.err.println("can not decrypt login time stamp");
                                     throw new InvalidMessageException();
                                 }
                                 long timeStamp = Long.parseLong(new String(timeStampBytes));
                                 long timeDiff = System.currentTimeMillis() - timeStamp;
                                 if (timeDiff < 0 || timeDiff > MAX_TIME_DIFF) {
                                     // time stamp out of date error
+                                    System.err.println("time stamp out of date");
                                     throw new InvalidMessageException();
                                 }
                                 // generate AES key
-                                Key kcs = MyAESKey.geneKey();
+                                kcs = MyAESKey.geneKey();
+                                // send it to client
                                 Message reply = new Message(Message.Type.SUCCESS);
                                 byte[] content = Base64.getEncoder().encode(kcs.getEncoded());
                                 reply.setContent(content);
                                 sendRSAMessage(outputToClient, reply, kpubC);
+                                // set threadUser online
+                                threadUser = user;
+                                onlineList.add(this);
+                                OnlineClient onlineClient = new OnlineClient(socket, kcs);
+                                new Thread(onlineClient).start();
+
                             } catch (InvalidMessageException e) {
                                 Message reply = new Message(Message.Type.FAILED);
                                 sendRSAMessage(outputToClient, reply, kpubC);
                             }
                         }
                     }
+                }
+                default: {
+
                 }
             }
 
@@ -293,6 +328,119 @@ public class Server {
             } catch (IOException e) {
                 // socket error
                 // TODO
+            }
+        }
+    }
+
+    private class OnlineClient implements Runnable {
+        private Socket socket;
+        private Key kcs;
+
+        public OnlineClient(Socket socket, Key kcs) {
+            this.socket = socket;
+        }
+
+        @Override
+        public void run() {
+            InputStream inputFromClient = null;
+            OutputStream outputToClient = null;
+            try {
+                inputFromClient = socket.getInputStream();
+                outputToClient = socket.getOutputStream();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            while (true) {
+                Message subMessage;
+                try {
+                    int messageLength = new DataInputStream(inputFromClient).readInt();
+                    byte[] encryptedMessageBytes = new byte[messageLength];
+                    inputFromClient.read(encryptedMessageBytes);
+                    // decrypt using kcs
+                    byte[] messageBytes;
+                    if (kcs != null) {
+                        try {
+                            messageBytes = MyAESKey.decrypt(encryptedMessageBytes, kcs);
+                        } catch (Exception e) {
+                            // can not decrypt
+                            System.err.println("can not decrypt aes");
+                            throw new InvalidMessageException();
+                        }
+                    } else {
+                        throw new InvalidMessageException();
+                    }
+                    try {
+                        subMessage = Message.readObject(messageBytes);
+                    } catch (ClassNotFoundException e) {
+                        // can not deserialize message error
+                        System.err.println("can not deserialize message");
+                        throw new InvalidMessageException();
+                    }
+
+                    // check time stamp
+                    byte[] subEncryptedTimeStamp = subMessage.getEncryptedTimeStamp();
+                    if (subEncryptedTimeStamp.length == 0) {
+                        // no time stamp
+                        System.err.println("no time stamp");
+                        throw new InvalidMessageException();
+                    }
+                    byte[] subTimeStampBytes = new byte[0];
+                    try {
+                        subTimeStampBytes = MyAESKey.decrypt(subEncryptedTimeStamp, kcs);
+                    } catch (Exception e) {
+                        // can not decrypt time stamp error
+                        System.err.println("can not decrypt sub time stamp");
+                        throw new InvalidMessageException();
+                    }
+                    long subTimeStamp = Long.parseLong(new String(subTimeStampBytes));
+                    long subTimeDiff = System.currentTimeMillis() - subTimeStamp;
+                    if (subTimeDiff < 0 || subTimeDiff > MAX_TIME_DIFF) {
+                        // time stamp out of date error
+                        System.err.println("sub time stamp out of date");
+                        throw new InvalidMessageException();
+                    }
+
+                    switch (subMessage.getType()) {
+                        case FRIENDING: {
+                            String receiverID = subMessage.getReceiverID();
+                            if (receiverID == "") {
+                                // message miss info
+                                System.err.print("sub message miss info");
+                                throw new InvalidMessageException();
+                            }
+                            // check whether receiver id is online
+                            boolean online = false;
+                            for (HandleAClient thread: onlineList) {
+                                if (thread.getThreadUser().getID().equals(receiverID)) {
+                                    online = true;
+                                    System.out.println("This user is online");
+                                }
+                            }
+                            if (!online) {
+                                System.err.println("threadUser does not online");
+                                throw new InvalidMessageException();
+                            }
+                            break;
+                        }
+                        case FRIEND_LIST: {
+                            break;
+                        }
+                        case QUERY: {
+                            break;
+                        }
+                        case FORWARD: {
+                            break;
+                        }
+                        default: {
+
+                        }
+                    }
+                } catch (IOException e) {
+                    // socket error
+                } catch (InvalidMessageException e) {
+                    System.err.println("online message error");
+
+                }
             }
         }
     }

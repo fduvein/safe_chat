@@ -1,5 +1,6 @@
 package kernl;
 
+import key.MyAESKey;
 import key.MyRSAKey;
 import message.InvalidMessageException;
 import message.Message;
@@ -25,6 +26,17 @@ public class Client {
 
     private OutputStream toServer;
     private InputStream fromServer;
+
+
+
+    public static void main(String[] args) {
+        //System.out.print(new Client().register("tx"));
+        System.out.print(new Client().login("freemso", new File("client/res/kpri_freemso.key")));
+
+        while (true) {
+
+        }
+    }
 
     public Client() {
         try {
@@ -78,7 +90,6 @@ public class Client {
                 byte[] encryptBytes = MyRSAKey.encrypt(bytes, kpubS);
                 toServer.write(encryptBytes);
             }
-            toServer.write(messageBytes);
             toServer.flush();
         } catch (IOException e) {
             // socket error
@@ -109,6 +120,7 @@ public class Client {
                     bytes = MyRSAKey.decrypt(encryptBytes, user.getKpriC());
                 } catch (Exception e) {
                     // can not decrypt error
+                    System.err.println("can not decrypt message");
                     throw new InvalidMessageException();
                 }
                 byteArrayOutputStream.write(bytes);
@@ -119,34 +131,34 @@ public class Client {
                 reply = Message.readObject(messageBytes);
             } catch (ClassNotFoundException e) {
                 // can not deserialize error
+                System.err.println("can not deserialize");
                 throw new InvalidMessageException();
             }
             // get necessary info
-            byte[] encryptTimeStamp = message.getEncryptedTimeStamp();
+            byte[] encryptTimeStamp = reply.getEncryptedTimeStamp();
             if (encryptTimeStamp.length == 0) {
+                System.err.println("message info miss");
                 throw new InvalidMessageException();
             }
             // check time stamp
-            Key kpubC = message.getSenderPubKey();
             byte[] replyTimeStampBytes = new byte[0];
             try {
-                replyTimeStampBytes = MyRSAKey.decrypt(encryptTimeStamp, kpubC);
+                replyTimeStampBytes = MyRSAKey.decrypt(encryptTimeStamp, kpubS);
             } catch (Exception e) {
                 // can not decrypt time stamp
+                System.err.println("can not decrypt time stamp");
                 throw new InvalidMessageException();
             }
             long replyTimeStamp = Long.parseLong(new String(replyTimeStampBytes));
             long timeDiff = System.currentTimeMillis() - replyTimeStamp;
             if (timeDiff < 0 || timeDiff > MAX_TIME_DIFF) {
+                System.err.println("time stamp out of date");
                 throw new InvalidMessageException();
             }
             if (reply.getType() == Message.Type.SUCCESS) {
-                // store user key in local
-                ObjectOutputStream publicKeyOutputStream = new ObjectOutputStream(new FileOutputStream("client/res/kpub_" + userID + ".key"));
+                // store user private key in local
                 ObjectOutputStream privateKeyOutputStream = new ObjectOutputStream(new FileOutputStream("client/res/kpri_" + userID + ".key"));
-                publicKeyOutputStream.writeObject(user.getKpubC());
                 privateKeyOutputStream.writeObject(user.getKpriC());
-                publicKeyOutputStream.close();
                 privateKeyOutputStream.close();
                 return "register success" + "\n" + "Your password is at client/res/kpri_" + userID + ".key";
             } else if (reply.getType() == Message.Type.FAILED) {
@@ -163,7 +175,9 @@ public class Client {
 
     }
 
-    public String login(String userID, Key kpriC) {
+    public String login(String userID, File kpriCFile) {
+        ClientKey clientKey = new ClientKey(kpriCFile);
+        Key kpriC = clientKey.getPrivateKey();
         Message message = new Message(Message.Type.LOGIN);
         message.setSenderID(userID);
         sendRSAMessage(message, kpriC);
@@ -180,6 +194,7 @@ public class Client {
                     bytes = MyRSAKey.decrypt(encryptBytes, kpriC);
                 } catch (Exception e) {
                     // can not decrypt error
+                    System.err.println("can not decrypt login message");
                     throw new InvalidMessageException();
                 }
                 byteArrayOutputStream.write(bytes);
@@ -190,25 +205,28 @@ public class Client {
                 reply = Message.readObject(messageBytes);
             } catch (ClassNotFoundException e) {
                 // can not deserialize error
+                System.err.println("can not deserialize error");
                 throw new InvalidMessageException();
             }
             // get necessary info
-            byte[] encryptTimeStamp = message.getEncryptedTimeStamp();
+            byte[] encryptTimeStamp = reply.getEncryptedTimeStamp();
             if (encryptTimeStamp.length == 0) {
+                System.err.println("message miss info");
                 throw new InvalidMessageException();
             }
             // check time stamp
-            Key kpubC = message.getSenderPubKey();
             byte[] replyTimeStampBytes = new byte[0];
             try {
-                replyTimeStampBytes = MyRSAKey.decrypt(encryptTimeStamp, kpubC);
+                replyTimeStampBytes = MyRSAKey.decrypt(encryptTimeStamp, kpubS);
             } catch (Exception e) {
                 // can not decrypt time stamp
+                System.err.println("can not decrypt time stamp");
                 throw new InvalidMessageException();
             }
             long replyTimeStamp = Long.parseLong(new String(replyTimeStampBytes));
             long timeDiff = System.currentTimeMillis() - replyTimeStamp;
             if (timeDiff < 0 || timeDiff > MAX_TIME_DIFF) {
+                System.err.println("time stamp out of date");
                 throw new InvalidMessageException();
             }
             if (reply.getType() == Message.Type.SUCCESS) {
@@ -216,6 +234,8 @@ public class Client {
                 // get KCS
                 byte[] decodedKey = Base64.getDecoder().decode(reply.getContent());
                 Key kcs = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
+
+
                 return "login success";
             } else if (reply.getType() == Message.Type.FAILED) {
                 return "login fail";
@@ -226,6 +246,109 @@ public class Client {
             // invalid message
             // invalid message
             return "socket error";
+        }
+    }
+
+
+    public class ConnectToServer implements Runnable {
+        private User user;
+        private Key kcs;
+        private Socket socket;
+        private InputStream inputFromClient;
+        private OutputStream outputToClient;
+
+        public ConnectToServer(Socket socket, User user, Key kcs) {
+            this.user = user;
+        }
+
+        @Override
+        public void run() {
+            try {
+                inputFromClient = socket.getInputStream();
+                outputToClient = socket.getOutputStream();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            while (true) {
+                handleAMessage();
+            }
+
+        }
+
+        public void handleAMessage() {
+            Message subMessage;
+            try {
+                int messageLength = new DataInputStream(inputFromClient).readInt();
+                byte[] encryptedMessageBytes = new byte[messageLength];
+                inputFromClient.read(encryptedMessageBytes);
+                // decrypt using kcs
+                byte[] messageBytes;
+                if (kcs != null) {
+                    try {
+                        messageBytes = MyAESKey.decrypt(encryptedMessageBytes, kcs);
+                    } catch (Exception e) {
+                        // can not decrypt
+                        System.err.println("can not decrypt aes");
+                        throw new InvalidMessageException();
+                    }
+                } else {
+                    throw new InvalidMessageException();
+                }
+                try {
+                    subMessage = Message.readObject(messageBytes);
+                } catch (ClassNotFoundException e) {
+                    // can not deserialize message error
+                    System.err.println("can not deserialize message");
+                    throw new InvalidMessageException();
+                }
+
+                // check time stamp
+                byte[] subEncryptedTimeStamp = subMessage.getEncryptedTimeStamp();
+                if (subEncryptedTimeStamp.length == 0) {
+                    // no time stamp
+                    System.err.println("no time stamp");
+                    throw new InvalidMessageException();
+                }
+                byte[] subTimeStampBytes = new byte[0];
+                try {
+                    subTimeStampBytes = MyAESKey.decrypt(subEncryptedTimeStamp, kcs);
+                } catch (Exception e) {
+                    // can not decrypt time stamp error
+                    System.err.println("can not decrypt sub time stamp");
+                    throw new InvalidMessageException();
+                }
+                long subTimeStamp = Long.parseLong(new String(subTimeStampBytes));
+                long subTimeDiff = System.currentTimeMillis() - subTimeStamp;
+                if (subTimeDiff < 0 || subTimeDiff > MAX_TIME_DIFF) {
+                    // time stamp out of date error
+                    System.err.println("sub time stamp out of date");
+                    throw new InvalidMessageException();
+                }
+
+                switch (subMessage.getType()) {
+                    case YES: {
+
+                    }
+                    case NO: {
+                        break;
+                    }
+                    case CHAT: {
+                        break;
+                    }
+                    case SESSION_KEY: {
+                        break;
+                    }
+                    default: {
+
+                    }
+                }
+            } catch (IOException e) {
+                // socket error
+            } catch (InvalidMessageException e) {
+                System.err.println("online message error");
+
+            }
+
         }
     }
 

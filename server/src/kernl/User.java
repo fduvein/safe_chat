@@ -7,22 +7,22 @@ import java.util.ArrayList;
  * Created by mso on 16-5-21.
  */
 public class User {
-    private Key kpubC;
+    private UserKey kpubC;
     private String ID;
     private ArrayList<String> friendsIDList;
 
 
-    public User(String ID, Key kpubC) {
+    public User(String ID, UserKey kpubC) {
         this.kpubC = kpubC;
         this.ID = ID;
         this.friendsIDList = new ArrayList<>();
     }
 
-    public Key getKpubC() {
+    public UserKey getKpubC() {
         return kpubC;
     }
 
-    public void setKpubC(Key kpubC) {
+    public void setKpubC(UserKey kpubC) {
         this.kpubC = kpubC;
     }
 

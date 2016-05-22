@@ -1,6 +1,10 @@
 package key;
 
 import javax.crypto.Cipher;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
