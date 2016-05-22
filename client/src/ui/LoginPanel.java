@@ -13,7 +13,10 @@ import java.io.*;
 *The panel used to login and register
  */
 public class LoginPanel extends JPanel {
-    public LoginPanel(int x, int y, JMenuItem it2, JMenuItem it3) {
+    JMenuItem it2;
+    JMenuItem it3;
+    JMenuItem it4;
+    public LoginPanel(int x, int y, JMenuItem t2, JMenuItem t3,JMenuItem t4) {
         this.setSize(x, y);
         LP login = new LP();
         RP register = new RP();
@@ -25,11 +28,14 @@ public class LoginPanel extends JPanel {
         Border b = BorderFactory.createLineBorder(Color.BLACK);
         login.setBorder(b);
         register.setBorder(b);
+        it2=t2;
+        it3=t3;
+        it4=t4;
     }
 
     // panel to login
     class LP extends JPanel {
-        private String password = null;
+        private File password = null;
 
         LP() {
             this.setLayout(null);
@@ -73,17 +79,7 @@ public class LoginPanel extends JPanel {
                     if (result == JFileChooser.APPROVE_OPTION) {
                         selectedFile = jc.getSelectedFile();
                         if (selectedFile.exists()) {
-                            FileReader fr = null;
-                            try {
-                                fr = new FileReader(selectedFile);
-                                pass.setText(selectedFile.getPath());
-                                BufferedReader bf = new BufferedReader(fr);
-                                password = bf.readLine();
-                                bf.close();
-                                fr.close();
-                            } catch (Exception e1) {
-                                JOptionPane.showMessageDialog(null, "Selected file Error.");
-                            }
+                            password=selectedFile;
                         } else {
                             JOptionPane.showMessageDialog(null, "You did not select the right file.");
                         }
@@ -97,18 +93,22 @@ public class LoginPanel extends JPanel {
                     //add code here
                     // if(password!=null) //to check whether the password is read
                     String lid = id.getText();
-                    if(checkId(lid)){
+                    if(checkId(lid)&&(password!=null)){
+
+                        String a=MainFrame.client.login(lid,password);
+                        l4.setText(a);
+                        if(a.equals("login success")){
+
+                                                    it2.setEnabled(true);
+                                                    it3.setEnabled(true);
+                            it4.setEnabled(true);
+                        }
 
                     }else{
                         JOptionPane.showMessageDialog(null,"illegal id");
                     }
 
 
-                    //if login successful ,set the menuitem true
-                    //if necessary show some info in l4
-                    //                        l4.setText(return infomation);
-                    //                        it2.setEnabled(true);
-                    //                        it3.setEnabled(true);
                 }
             });
         }
@@ -138,38 +138,12 @@ public class LoginPanel extends JPanel {
             bt.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    //add code here
-                    //need to create a pair of keys
-                    String rid=id.getText();
+                      String rid=id.getText();
                     if(checkId(rid)){
-
+                        l4.setText(MainFrame.client.register(rid));
                     }else{
                         JOptionPane.showMessageDialog(null,"illegal id");
                     }
-
-                    //if register successful
-                    //save the private key as email.key(or email.txt?)
-                    //and then tell the user to login next
-                    //if necessary show some info in l4
-                    //    l4.setText(return infomation);
-
-//                    try{
-//                        File file =new File(id.getText()+".key");
-//                        //if file doesnt exists, then create it
-//                        if(!file.exists()){
-//                            file.createNewFile();
-//                        }
-//                        data=//the string to write
-//                        FileWriter fileWritter = new FileWriter(file.getName(),true);
-//                        BufferedWriter bufferWritter = new BufferedWriter(fileWritter);
-//                        bufferWritter.write(data);
-//                        bufferWritter.close();
-//
-//                    }catch(Exception e1){
-//                       JOptionPane.showMessageDialog(null,"Write file error");
-//                    }
-
-
                 }
             });
         }

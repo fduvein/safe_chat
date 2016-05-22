@@ -41,7 +41,7 @@ public class ChatPanel extends JPanel {
 
     public ChatPanel(int x, int y) {
         this.setLayout(null);
-        loadFriend();
+
         list.setListData(friends);
         list.addListSelectionListener(new CFriend());
 //        These are test code
@@ -98,24 +98,25 @@ public class ChatPanel extends JPanel {
 
     }
 
+    //useless code
     //load the friendList from a file
-    private void loadFriend() {
-        File file = new File("friendList.txt");
-        BufferedReader reader = null;
-        try {
-            reader = new BufferedReader(new FileReader(file));
-            String tempString = null;
-            int i;
-            while ((tempString = reader.readLine()) != null) {
-                i = tempString.indexOf(' ');
-                friends.add(new Friend(tempString.substring(0, i), tempString.substring(i, tempString.length())));
-                messageList.add(new MessageList(tempString.substring(0, i)));
-            }
-            reader.close();
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Readind Friend List fails");
-        }
-    }
+//    private void loadFriend() {
+//        File file = new File("friendList.txt");
+//        BufferedReader reader = null;
+//        try {
+//            reader = new BufferedReader(new FileReader(file));
+//            String tempString = null;
+//            int i;
+//            while ((tempString = reader.readLine()) != null) {
+//                i = tempString.indexOf(' ');
+//                friends.add(new Friend(tempString.substring(0, i), tempString.substring(i, tempString.length())));
+//                messageList.add(new MessageList(tempString.substring(0, i)));
+//            }
+//            reader.close();
+//        } catch (Exception e) {
+//            JOptionPane.showMessageDialog(null, "Readind Friend List fails");
+//        }
+//    }
 
     private class Friend {
         String id;
@@ -173,8 +174,8 @@ public class ChatPanel extends JPanel {
         public void actionPerformed(ActionEvent e) {
             //current:the friend which the message is sent
             //String m=message.getText();:the message to send
-           // if send successfully add the message to list and reload the messageList
-             //addSendMessage(current.id,m);
+            // if send successfully add the message to list and reload the messageList
+            //addSendMessage(current.id,m);
             //loadMessage(current.id);
             //inform the user if necessary
             //l4 is a info JLable
@@ -182,7 +183,7 @@ public class ChatPanel extends JPanel {
             //What's more
             // if receive a message add the message to list
             // addReceiveMessage(id,m);
-           }
+        }
     }
 
     //The List to choose friend to chat with

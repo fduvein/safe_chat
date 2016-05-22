@@ -17,7 +17,7 @@ public class Client {
     private final String HOST = "localhost";
     private final int PORT = 8000;
     private final String SERVER_PUBLIC_KEY_FILE = "client/res/kpubS.key";
-    private final long MAX_TIME_DIFF = 1000*5;
+    private final long MAX_TIME_DIFF = 1000 * 5;
     private final int STREAM_SEGMENT_LENGTH = 128;
     private final int MESSAGE_SEGMENT_LENGTH = 117;
 
@@ -26,18 +26,13 @@ public class Client {
     private OutputStream toServer;
     private InputStream fromServer;
 
-    public static void main(String[] args) {
-
-        new Client();
-    }
-
     public Client() {
         try {
             // read server public key
             File publicKeyFile = new File(SERVER_PUBLIC_KEY_FILE);
             if (publicKeyFile.exists()) {
                 ObjectInputStream publicKeyInputStream = new ObjectInputStream(new FileInputStream(publicKeyFile));
-                kpubS = (Key)publicKeyInputStream.readObject();
+                kpubS = (Key) publicKeyInputStream.readObject();
                 publicKeyInputStream.close();
             }
             // construct socket with server
@@ -54,23 +49,23 @@ public class Client {
     public void sendRSAMessage(Message message, Key key) {
         try {
             // add time stamp
-            String messageTimeStamp = System.currentTimeMillis()+"";
+            String messageTimeStamp = System.currentTimeMillis() + "";
             message.setEncryptedTimeStamp(MyRSAKey.encrypt(messageTimeStamp.getBytes(), key));
             byte[] messageBytes = Message.writeObject(message);
             // encrypt the message
-            int segmentNum = messageBytes.length/MESSAGE_SEGMENT_LENGTH;
-            int remainder = messageBytes.length%MESSAGE_SEGMENT_LENGTH;
+            int segmentNum = messageBytes.length / MESSAGE_SEGMENT_LENGTH;
+            int remainder = messageBytes.length % MESSAGE_SEGMENT_LENGTH;
             int messageLength;
             if (remainder == 0) {
-                messageLength = segmentNum*STREAM_SEGMENT_LENGTH;
+                messageLength = segmentNum * STREAM_SEGMENT_LENGTH;
             } else {
-                messageLength = (segmentNum+1)*STREAM_SEGMENT_LENGTH;
+                messageLength = (segmentNum + 1) * STREAM_SEGMENT_LENGTH;
             }
             new DataOutputStream(toServer).writeInt(messageLength);
             for (int i = 0; i < segmentNum; i++) {
                 byte[] bytes = new byte[MESSAGE_SEGMENT_LENGTH];
                 for (int j = 0; j < bytes.length; j++) {
-                    bytes[j] = messageBytes[i*MESSAGE_SEGMENT_LENGTH + j];
+                    bytes[j] = messageBytes[i * MESSAGE_SEGMENT_LENGTH + j];
                 }
                 byte[] encryptBytes = MyRSAKey.encrypt(bytes, kpubS);
                 toServer.write(encryptBytes);
@@ -78,7 +73,7 @@ public class Client {
             if (remainder != 0) {
                 byte[] bytes = new byte[remainder];
                 for (int k = 0; k < remainder; k++) {
-                    bytes[k] = messageBytes[(segmentNum)*MESSAGE_SEGMENT_LENGTH+k];
+                    bytes[k] = messageBytes[(segmentNum) * MESSAGE_SEGMENT_LENGTH + k];
                 }
                 byte[] encryptBytes = MyRSAKey.encrypt(bytes, kpubS);
                 toServer.write(encryptBytes);
@@ -94,7 +89,7 @@ public class Client {
         }
     }
 
-    public void register(String userID) {
+    public String register(String userID) {
         User user = new User(userID);
         Message message = new Message(Message.Type.REGISTER);
         message.setSenderID(userID);
@@ -146,8 +141,6 @@ public class Client {
                 throw new InvalidMessageException();
             }
             if (reply.getType() == Message.Type.SUCCESS) {
-                System.out.println("register success");
-                // TODO
                 // store user key in local
                 ObjectOutputStream publicKeyOutputStream = new ObjectOutputStream(new FileOutputStream("client/res/kpub_" + userID + ".key"));
                 ObjectOutputStream privateKeyOutputStream = new ObjectOutputStream(new FileOutputStream("client/res/kpri_" + userID + ".key"));
@@ -155,23 +148,22 @@ public class Client {
                 privateKeyOutputStream.writeObject(user.getKpriC());
                 publicKeyOutputStream.close();
                 privateKeyOutputStream.close();
+                return "register success" + "\n" + "Your password is at client/res/kpri_" + userID + ".key";
             } else if (reply.getType() == Message.Type.FAILED) {
                 // register failed
-                // TODO
+                return "register fail";
             }
-        } catch (IOException e) {
+            return "register fail";
+        } catch (IOException | InvalidMessageException | NumberFormatException e) {
             // socket error
-            // TODO
-        } catch (InvalidMessageException e) {
             // invalid message
-            // TODO
-        } catch (NumberFormatException e) {
             // invalid message
-            // TODO
+            return "Socket error";
         }
+
     }
 
-    public void login(String userID, Key kpriC) {
+    public String login(String userID, Key kpriC) {
         Message message = new Message(Message.Type.LOGIN);
         message.setSenderID(userID);
         sendRSAMessage(message, kpriC);
@@ -220,25 +212,20 @@ public class Client {
                 throw new InvalidMessageException();
             }
             if (reply.getType() == Message.Type.SUCCESS) {
-                System.out.println("login success");
-                // TODO
+
                 // get KCS
                 byte[] decodedKey = Base64.getDecoder().decode(reply.getContent());
                 Key kcs = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
-
+                return "login success";
             } else if (reply.getType() == Message.Type.FAILED) {
-                System.out.println("login fail");
-                // TODO
+                return "login fail";
             }
-        } catch (IOException e) {
+            return "login fail";
+        } catch (IOException | InvalidMessageException | NumberFormatException e) {
             // socket error
-            // TODO
-        } catch (InvalidMessageException e) {
             // invalid message
-            // TODO
-        } catch (NumberFormatException e) {
             // invalid message
-            // TODO
+            return "socket error";
         }
     }
 
