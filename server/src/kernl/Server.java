@@ -21,7 +21,7 @@ public class Server {
     private final String PUBLIC_KEY_FILE = "server/res/kpubS.key";
     private final String PRIVATE_KEY_FILE = "server/res/kpriS.key";
     private final String USER_DATA_FILE = "server/res/users.xml";
-    private final long MAX_TIME_DIFF = 1000*5;
+    private final long MAX_TIME_DIFF = 1000 * 5;
     private final int STREAM_SEGMENT_LENGTH = 128;
     private final int MESSAGE_SEGMENT_LENGTH = 117;
 
@@ -69,7 +69,6 @@ public class Server {
     }
 
 
-
     public Key getKpubS() {
         return kpubS;
     }
@@ -82,6 +81,7 @@ public class Server {
         private Socket socket;
         private Key kcs;
         private User threadUser;
+
         public HandleAClient(Socket socket) {
             this.socket = socket;
         }
@@ -164,7 +164,7 @@ public class Server {
                         }
                         // check whether id exist in threadUser list
                         boolean exist = false;
-                        for (User u: userList) {
+                        for (User u : userList) {
                             if (u.getID().equals(senderID)) {
                                 exist = true;
                             }
@@ -202,7 +202,7 @@ public class Server {
                     }
 
                     // check whether id exist in threadUser list
-                    for (User user: userList) {
+                    for (User user : userList) {
                         if (user.getID().equals(message.getSenderID())) {
                             // get threadUser public key
                             Key kpubC = user.getKpubC().getPublic();
@@ -254,7 +254,7 @@ public class Server {
 
         public void sendRSAMessage(OutputStream outputToClient, Message message, Key key) {
             // add time stamp
-            String timeStampStr = System.currentTimeMillis()+"";
+            String timeStampStr = System.currentTimeMillis() + "";
             try {
                 message.setEncryptedTimeStamp(MyRSAKey.encrypt(timeStampStr.getBytes(), kpriS));
             } catch (Exception e) {
@@ -269,13 +269,13 @@ public class Server {
                 // can not serialize error
                 // TODO
             }
-            int segmentNum = messageBytes.length/MESSAGE_SEGMENT_LENGTH;
-            int remainder = messageBytes.length%MESSAGE_SEGMENT_LENGTH;
+            int segmentNum = messageBytes.length / MESSAGE_SEGMENT_LENGTH;
+            int remainder = messageBytes.length % MESSAGE_SEGMENT_LENGTH;
             int replyLength;
             if (remainder == 0) {
-                replyLength = segmentNum*STREAM_SEGMENT_LENGTH;
+                replyLength = segmentNum * STREAM_SEGMENT_LENGTH;
             } else {
-                replyLength = (segmentNum+1)*STREAM_SEGMENT_LENGTH;
+                replyLength = (segmentNum + 1) * STREAM_SEGMENT_LENGTH;
             }
             try {
                 new DataOutputStream(outputToClient).writeInt(replyLength);
@@ -286,7 +286,7 @@ public class Server {
             for (int i = 0; i < segmentNum; i++) {
                 byte[] bytes = new byte[MESSAGE_SEGMENT_LENGTH];
                 for (int j = 0; j < bytes.length; j++) {
-                    bytes[j] = messageBytes[i*MESSAGE_SEGMENT_LENGTH + j];
+                    bytes[j] = messageBytes[i * MESSAGE_SEGMENT_LENGTH + j];
                 }
                 byte[] encryptBytes = new byte[0];
                 try {
@@ -305,7 +305,7 @@ public class Server {
             if (remainder != 0) {
                 byte[] bytes = new byte[remainder];
                 for (int k = 0; k < remainder; k++) {
-                    bytes[k] = messageBytes[(segmentNum)*MESSAGE_SEGMENT_LENGTH+k];
+                    bytes[k] = messageBytes[(segmentNum) * MESSAGE_SEGMENT_LENGTH + k];
                 }
                 byte[] encryptBytes = new byte[0];
                 try {
@@ -413,7 +413,7 @@ public class Server {
                             }
                             // check whether receiver id is online
                             boolean online = false;
-                            for (MaintainAClient thread: maintainAClientList) {
+                            for (MaintainAClient thread : maintainAClientList) {
                                 if (thread.getThreadUser().getID().equals(receiverID)) {
                                     online = true;
                                     Message message = new Message(Message.Type.FRIENDING);
@@ -428,9 +428,114 @@ public class Server {
                             break;
                         }
                         case FRIEND_LIST: {
+                            Message message = new Message(Message.Type.FRIEND_LIST);
+                            loadFriendList(message, threadUser);
+                            sendAESMessage(message);
                             break;
                         }
-                        case QUERY: {
+                        case NEGO_SESSION_KEY: {
+                            String receiverID = subMessage.getReceiverID();
+                            String senderID = subMessage.getSenderID();
+                            Message message = new Message(Message.Type.NEGO_SESSION_KEY);
+                            message.setContent(subMessage.getContent());
+                            message.setSenderID(senderID);
+                            message.setReceiverID(receiverID);
+                            for (MaintainAClient thread1 : maintainAClientList) {
+                                if (thread1.getThreadUser().getID().equals(receiverID)) {
+                                    thread1.sendAESMessage(message);
+                                }
+                            }
+                            break;
+                        }
+                        case CHAT:{
+                            String receiverID = subMessage.getReceiverID();
+                            String senderID = subMessage.getSenderID();
+                            Message message = new Message(Message.Type.CHAT);
+                            message.setContent(subMessage.getContent());
+                            message.setSenderID(senderID);
+                            message.setReceiverID(receiverID);
+                            for (MaintainAClient thread1 : maintainAClientList) {
+                                if (thread1.getThreadUser().getID().equals(receiverID)) {
+                                    thread1.sendAESMessage(message);
+                                }
+                            }
+                            break;
+                        }
+                        case FILE:{
+                            String receiverID = subMessage.getReceiverID();
+                            String senderID = subMessage.getSenderID();
+                            Message message = new Message(Message.Type.FILE);
+                            message.setContent(subMessage.getContent());
+                            message.setSenderID(senderID);
+                            message.setReceiverID(receiverID);
+                            for (MaintainAClient thread1 : maintainAClientList) {
+                                if (thread1.getThreadUser().getID().equals(receiverID)) {
+                                    thread1.sendAESMessage(message);
+                                }
+                            }
+                            break;
+                        }
+                        case YES_TO_FRIENDING: {
+                            String receiverID = subMessage.getReceiverID();
+                            String senderID = subMessage.getSenderID();
+                            if (receiverID == "") {
+                                // message miss info
+                                System.err.print("sub message miss info");
+                                throw new InvalidMessageException();
+                            }
+                            // add friend into friendList
+                            for (int i = 0; i < userList.size(); i++) {
+                                if (userList.get(i).getID().equals(receiverID)) {
+                                    userList.get(i).getFriendsIDList().add(senderID);
+                                }
+                                if (userList.get(i).getID().equals(senderID)) {
+                                    userList.get(i).getFriendsIDList().add(receiverID);
+                                }
+                            }
+                            userDataXML.updateXml(userList);
+                            for (MaintainAClient thread : maintainAClientList) {
+                                if (thread.getThreadUser().getID().equals(receiverID)) {
+                                    Message message = new Message(Message.Type.YES_TO_FRIENDING);
+                                    message.setSenderID(senderID);//B
+                                    message.setReceiverID(receiverID);//A
+                                    thread.sendAESMessage(message);
+                                    Message message1 = new Message(Message.Type.FRIEND_LIST);//send to A
+                                    Message message2 = new Message(Message.Type.FRIEND_LIST);//send to B
+                                    for (int i = 0; i < userList.size(); i++) {
+                                        if (userList.get(i).getID().equals(receiverID)) {
+                                            loadFriendList(message1, userList.get(i));
+                                        }
+                                        if (userList.get(i).getID().equals(senderID)) {
+                                            loadFriendList(message2, userList.get(i));
+                                        }
+                                    }
+                                    thread.sendAESMessage(message1);
+                                    for (MaintainAClient thread2 : maintainAClientList) {
+                                        if (thread2.getThreadUser().getID().equals(senderID)) {
+                                            thread2.sendAESMessage(message2);
+                                        }
+                                    }
+
+                                }
+                            }
+                            break;
+                        }
+                        case NO_TO_FRIENDING: {
+                            String receiverID = subMessage.getReceiverID();
+                            if (receiverID == "") {
+                                // message miss info
+                                System.err.print("sub message miss info");
+                                throw new InvalidMessageException();
+                            }
+                            // check whether receiver id is online
+                            for (MaintainAClient thread : maintainAClientList) {
+                                if (thread.getThreadUser().getID().equals(receiverID)) {
+                                    Message message = new Message(Message.Type.NO_TO_FRIENDING);
+                                    message.setSenderID(subMessage.getSenderID());
+                                    message.setReceiverID(subMessage.getReceiverID());
+                                    thread.sendAESMessage(message);
+                                }
+                            }
                             break;
                         }
                         default: {
@@ -455,11 +560,20 @@ public class Server {
             this.threadUser = threadUser;
         }
 
+        public void loadFriendList(Message m, User user) {
+            ArrayList<String> temp = user.getFriendsIDList();
+            for (int j = 0; j < temp.size(); j++) {
+                String path = USER_PUBLIC_KEY_FILE_PREFIX + temp.get(j) + ".key";
+                UserKey userKey = new UserKey(path);
+                m.addFriendInfo(temp.get(j), userKey.getPublic());
+            }
+        }
+
         public void sendAESMessage(Message message) {
             try {
                 OutputStream toServer = socket.getOutputStream();
                 // add time stamp
-                String timeStampStr = System.currentTimeMillis()+"";
+                String timeStampStr = System.currentTimeMillis() + "";
                 message.setEncryptedTimeStamp(MyAESKey.encrypt(timeStampStr.getBytes(), kcs));
                 byte[] messageBytes = Message.writeObject(message);
                 byte[] encryptedMessageBytes = MyAESKey.encrypt(messageBytes, kcs);

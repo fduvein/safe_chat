@@ -80,6 +80,7 @@ public class LoginPanel extends JPanel {
                         selectedFile = jc.getSelectedFile();
                         if (selectedFile.exists()) {
                             password=selectedFile;
+                            pass.setText(password.getPath());
                         } else {
                             JOptionPane.showMessageDialog(null, "You did not select the right file.");
                         }
@@ -94,8 +95,7 @@ public class LoginPanel extends JPanel {
                     // if(password!=null) //to check whether the password is read
                     String lid = id.getText();
                     if(checkId(lid)&&(password!=null)){
-
-                        String aa=MainFrame.client.login(lid,password);
+                        String aa="";//MainFrame.client.login(lid,password);
                         l4.setText(aa);
                         if(aa.equals("login success")){
 

@@ -2,6 +2,7 @@ package message;
 
 import java.io.*;
 import java.security.Key;
+import java.util.ArrayList;
 
 /**
  * Created by mso on 16-5-20.
@@ -16,7 +17,19 @@ public class Message implements Serializable {
     private byte[] content;
     private Key sessionKey;
     private Message subMessage;
+    private ArrayList<FriendInfo> friendInfo=new ArrayList<>();
 
+    private class  FriendInfo{
+        String id;
+        Key key;
+        FriendInfo(String i,Key k){
+            id=i;
+            key=k;
+        }
+    }
+    public void addFriendInfo(String a,Key b){
+        friendInfo.add(new FriendInfo(a,b));
+    }
     public Message(Type type) {
         this.type = type;
     }
@@ -111,7 +124,7 @@ public class Message implements Serializable {
     }
 
     public enum Type {
-        REGISTER, LOGIN, SUCCESS, FAILED, FRIENDING, YES_TO_FRIENDING, NO_TO_FRIENDING, NEGO_SESSION_KEY, FRIEND_LIST, QUERY, CHAT
+        REGISTER, LOGIN, SUCCESS, FAILED, FRIENDING, YES_TO_FRIENDING, NO_TO_FRIENDING, NEGO_SESSION_KEY, FRIEND_LIST, QUERY, CHAT,FILE
     }
 
 }
