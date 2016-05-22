@@ -183,6 +183,7 @@ public class Server {
                             // tell the client success
                             Message reply = new Message(Message.Type.SUCCESS);
                             sendRSAMessage(outputToClient, reply, kpubC);
+                            System.out.println("user " + user.getID() + "registered");
                         }
                     } catch (InvalidMessageException e) {
                         Message reply = new Message(Message.Type.FAILED);
@@ -237,6 +238,7 @@ public class Server {
                                 MaintainAClient maintainAClient = new MaintainAClient(socket, kcs, user);
                                 maintainAClientList.add(maintainAClient);
                                 new Thread(maintainAClient).start();
+                                System.out.println("user " + user.getID() + "is online");
 
                             } catch (InvalidMessageException e) {
                                 Message reply = new Message(Message.Type.FAILED);
@@ -249,8 +251,6 @@ public class Server {
 
                 }
             }
-
-
         }
 
         public void sendRSAMessage(OutputStream outputToClient, Message message, Key key) {

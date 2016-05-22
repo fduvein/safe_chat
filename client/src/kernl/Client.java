@@ -391,7 +391,6 @@ public class Client {
 
     }
 
-
     public class ListenToServer implements Runnable {
         private User user;
         private Key kcs;
