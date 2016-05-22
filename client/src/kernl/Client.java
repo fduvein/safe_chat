@@ -4,12 +4,14 @@ import key.MyAESKey;
 import key.MyRSAKey;
 import message.InvalidMessageException;
 import message.Message;
+import ui.ChatPanel;
 
 import javax.crypto.spec.SecretKeySpec;
 import javax.swing.*;
 import java.io.*;
 import java.net.Socket;
 import java.security.Key;
+import java.util.ArrayList;
 import java.util.Base64;
 
 /**
@@ -22,26 +24,26 @@ public class Client {
     private final long MAX_TIME_DIFF = 1000 * 5;
     private final int STREAM_SEGMENT_LENGTH = 128;
     private final int MESSAGE_SEGMENT_LENGTH = 117;
-
     private Key kpubS;
 
     private Socket socket;
 
     private User user;
-
+private ChatPanel chatPanel;
     private Key kcs;
 
 
     public static void main(String[] args) {
         //System.out.print(new Client().register("tx"));
-        System.out.print(new Client().login("freemso", new File("client/res/kpri_freemso.key")));
+//        System.out.print(new Client().login("freemso", new File("client/res/kpri_freemso.key")));
 
         while (true) {
 
         }
     }
 
-    public Client() {
+    public Client(ChatPanel p1) {
+        chatPanel=p1;
         try {
             // read server public key
             File publicKeyFile = new File(SERVER_PUBLIC_KEY_FILE);
@@ -314,6 +316,7 @@ public class Client {
         Message message = new Message(Message.Type.FRIEND_LIST);
         message.setSenderID(user.getUserID());
         sendAESMessage(message);
+
     }
 
     public void sendRSAMessage(Message message, Key key) {
@@ -488,6 +491,16 @@ public class Client {
                         break;
                     }
                     case NEGO_SESSION_KEY: {
+
+                        break;
+                    }
+                    case FRIEND_LIST:{
+                        for (int i=0;i<subMessage.getFriendInfo().size();i++){
+                            user.addFriendIntoList(subMessage.getFriendInfo().get(i).getID(),subMessage.getFriendInfo().get(i).getKey());
+                        }
+                        chatPanel.loadFriend(user.getFriendList());
+
+
 
                         break;
                     }

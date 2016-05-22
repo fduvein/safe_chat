@@ -16,7 +16,8 @@ public class LoginPanel extends JPanel {
     JMenuItem it2;
     JMenuItem it3;
     JMenuItem it4;
-    public LoginPanel(int x, int y, JMenuItem t2, JMenuItem t3,JMenuItem t4) {
+
+    public LoginPanel(int x, int y, JMenuItem t2, JMenuItem t3, JMenuItem t4) {
         this.setSize(x, y);
         LP login = new LP();
         RP register = new RP();
@@ -28,9 +29,9 @@ public class LoginPanel extends JPanel {
         Border b = BorderFactory.createLineBorder(Color.BLACK);
         login.setBorder(b);
         register.setBorder(b);
-        it2=t2;
-        it3=t3;
-        it4=t4;
+        it2 = t2;
+        it3 = t3;
+        it4 = t4;
     }
 
     // panel to login
@@ -79,7 +80,7 @@ public class LoginPanel extends JPanel {
                     if (result == JFileChooser.APPROVE_OPTION) {
                         selectedFile = jc.getSelectedFile();
                         if (selectedFile.exists()) {
-                            password=selectedFile;
+                            password = selectedFile;
                             pass.setText(password.getPath());
                         } else {
                             JOptionPane.showMessageDialog(null, "You did not select the right file.");
@@ -94,19 +95,21 @@ public class LoginPanel extends JPanel {
                     //add code here
                     // if(password!=null) //to check whether the password is read
                     String lid = id.getText();
-                    if(checkId(lid)&&(password!=null)){
-                        String aa=MainFrame.client.login(lid,password);
+                    if(password == null){
+                        JOptionPane.showMessageDialog(null, "illegal password");
+                    }else{
+                    if (checkId(lid)  ) {
+                        String aa = MainFrame.client.login(lid, password);
                         l4.setText(aa);
-                        if(aa.equals("login success")){
-
-                                                    it2.setEnabled(true);
-                                                    it3.setEnabled(true);
+                        if (aa.equals("login success")) {
+                            it2.setEnabled(true);
+                            it3.setEnabled(true);
                             it4.setEnabled(true);
                         }
 
-                    }else{
-                        JOptionPane.showMessageDialog(null,"illegal id");
-                    }
+                    } else {
+                        JOptionPane.showMessageDialog(null, "illegal id");
+                    }}
 
 
                 }
@@ -138,11 +141,11 @@ public class LoginPanel extends JPanel {
             bt.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                      String rid=id.getText();
-                    if(checkId(rid)){
+                    String rid = id.getText();
+                    if (checkId(rid)) {
                         l4.setText(MainFrame.client.register(rid));
-                    }else{
-                        JOptionPane.showMessageDialog(null,"illegal id");
+                    } else {
+                        JOptionPane.showMessageDialog(null, "illegal id");
                     }
                 }
             });

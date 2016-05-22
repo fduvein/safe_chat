@@ -58,4 +58,12 @@ public class User {
     public void setFriendList(ArrayList<Friend> friendList) {
         this.friendList = friendList;
     }
+    public void addFriendIntoList(String id,Key k){
+        friendList.add(new Friend(id,k));
+    }
+
+    @Override
+    public String toString() {
+        return userID;
+    }
 }

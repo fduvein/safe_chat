@@ -65,7 +65,8 @@ public class MainFrame extends JFrame {
         s.setBounds(50, 15, x, y);
         this.setLayout(null);
         this.add(s);
-        client=new Client();
+        //panel3 is chatPanel
+        client=new Client(panel3);
     }
 
     public static void main(String[] args) {

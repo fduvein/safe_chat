@@ -17,21 +17,34 @@ public class Message implements Serializable {
     private byte[] content;
     private Key sessionKey;
     private Message subMessage;
-    private ArrayList<FriendInfo> friendInfo=new ArrayList<>();
+    private ArrayList<FriendInfo> friendInfo = new ArrayList<>();
 
-    private class  FriendInfo{
+    public class FriendInfo {
         String id;
         Key key;
-        FriendInfo(String i,Key k){
-            id=i;
-            key=k;
+
+        FriendInfo(String i, Key k) {
+            id = i;
+            key = k;
+        }
+        public String getID(){
+            return id;
+        }
+        public Key getKey(){
+            return key;
         }
     }
-    public void addFriendInfo(String a,Key b){
-        friendInfo.add(new FriendInfo(a,b));
+
+    public void addFriendInfo(String a, Key b) {
+        friendInfo.add(new FriendInfo(a, b));
     }
+
     public Message(Type type) {
         this.type = type;
+    }
+
+    public ArrayList<FriendInfo> getFriendInfo() {
+        return friendInfo;
     }
 
     public static byte[] writeObject(Message message) throws IOException {
@@ -124,7 +137,7 @@ public class Message implements Serializable {
     }
 
     public enum Type {
-        REGISTER, LOGIN, SUCCESS, FAILED, FRIENDING, YES_TO_FRIENDING, NO_TO_FRIENDING, NEGO_SESSION_KEY, FRIEND_LIST, QUERY, CHAT,FILE
+        REGISTER, LOGIN, SUCCESS, FAILED, FRIENDING, YES_TO_FRIENDING, NO_TO_FRIENDING, NEGO_SESSION_KEY, FRIEND_LIST, QUERY, CHAT, FILE
     }
 
 }

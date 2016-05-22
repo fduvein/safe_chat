@@ -1,5 +1,8 @@
 package ui;
 
+import kernl.Friend;
+import kernl.User;
+
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
@@ -42,7 +45,7 @@ public class ChatPanel extends JPanel {
     public ChatPanel(int x, int y) {
         this.setLayout(null);
 
-        list.setListData(friends);
+
         list.addListSelectionListener(new CFriend());
 //        These are test code
 //        messageList.get(1).sendMessage("Hello");
@@ -100,37 +103,11 @@ public class ChatPanel extends JPanel {
 
     //useless code
     //load the friendList from a file
-//    private void loadFriend() {
-//        File file = new File("friendList.txt");
-//        BufferedReader reader = null;
-//        try {
-//            reader = new BufferedReader(new FileReader(file));
-//            String tempString = null;
-//            int i;
-//            while ((tempString = reader.readLine()) != null) {
-//                i = tempString.indexOf(' ');
-//                friends.add(new Friend(tempString.substring(0, i), tempString.substring(i, tempString.length())));
-//                messageList.add(new MessageList(tempString.substring(0, i)));
-//            }
-//            reader.close();
-//        } catch (Exception e) {
-//            JOptionPane.showMessageDialog(null, "Readind Friend List fails");
-//        }
-//    }
-
-    private class Friend {
-        String id;
-        String key;
-
-        Friend(String a, String b) {
-            id = a;
-            key = b;
+    public  void loadFriend(ArrayList<Friend> friend) {
+        for(int i=0;i<friend.size();i++){
+            friends.add(new Friend(friend.get(i).getId(),friend.get(i).getPublicKey()));
         }
-
-        @Override
-        public String toString() {
-            return id;
-        }
+        list.setListData(friends);
     }
 
     //choose a file
@@ -193,7 +170,7 @@ public class ChatPanel extends JPanel {
             {
                 String a = ((JList) e.getSource()).getSelectedValue().toString();
                 for (int i = 0; i < friends.size(); i++) {
-                    if (a.equals(friends.get(i).id)) {
+                    if (a.equals(friends.get(i).getId())) {
                         current = friends.get(i);
                         break;
                     }
