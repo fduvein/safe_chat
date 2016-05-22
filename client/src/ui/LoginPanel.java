@@ -3,11 +3,8 @@ package ui;
 import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
+import java.awt.event.*;
+import java.io.*;
 
 /**
  * Created by Tanxin on 2016/5/16.
@@ -39,10 +36,10 @@ public class LoginPanel extends JPanel {
             JLabel l1 = new JLabel("Login");
             JLabel l2 = new JLabel("ID");
             JLabel l3 = new JLabel("Password");
-            JLabel l4 = new JLabel();
+            JLabel l4 = new JLabel("ID can contain letters,digits and \"_\"");
             l4.setBorder(BorderFactory.createEtchedBorder());
             JTextField id = new JTextField();
-            final JTextArea pass = new JTextArea();
+            JTextArea pass = new JTextArea();
             pass.setEditable(false);
             l1.setBounds(20, 20, 300, 30);
             l2.setBounds(40, 90, 60, 20);
@@ -99,7 +96,12 @@ public class LoginPanel extends JPanel {
                 public void actionPerformed(ActionEvent e) {
                     //add code here
                     // if(password!=null) //to check whether the password is read
-                    //String email=id.getText();
+                    String lid = id.getText();
+                    if(checkId(lid)){
+
+                    }else{
+                        JOptionPane.showMessageDialog(null,"illegal id");
+                    }
 
 
                     //if login successful ,set the menuitem true
@@ -109,8 +111,6 @@ public class LoginPanel extends JPanel {
                     //                        it3.setEnabled(true);
                 }
             });
-
-
         }
     }
 
@@ -120,7 +120,7 @@ public class LoginPanel extends JPanel {
             this.setLayout(null);
             JLabel l1 = new JLabel("Register");
             JLabel l2 = new JLabel("ID");
-            JLabel l4 = new JLabel();
+            JLabel l4 = new JLabel("ID can contain letters,digits and \"_\"");
             l4.setBorder(BorderFactory.createEtchedBorder());
             JTextField id = new JTextField();
             l1.setBounds(20, 20, 300, 30);
@@ -140,8 +140,12 @@ public class LoginPanel extends JPanel {
                 public void actionPerformed(ActionEvent e) {
                     //add code here
                     //need to create a pair of keys
-//                    String email=id.getText();
+                    String rid=id.getText();
+                    if(checkId(rid)){
 
+                    }else{
+                        JOptionPane.showMessageDialog(null,"illegal id");
+                    }
 
                     //if register successful
                     //save the private key as email.key(or email.txt?)
@@ -170,4 +174,18 @@ public class LoginPanel extends JPanel {
             });
         }
     }
+
+    private boolean checkId(String id) {
+        if (id.length() > 15 || id.length() == 0) {
+            return false;
+        }
+        for (int i = 0; i < id.length(); i++) {
+            int a = id.charAt(i);
+            if (!((a > 47 && a < 58) || (a == 95) || (a > 96 && a < 123) || (a > 64 && a < 91))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 }

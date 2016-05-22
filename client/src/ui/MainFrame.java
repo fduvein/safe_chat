@@ -1,5 +1,7 @@
 package ui;
 
+
+import kernl.Client;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -19,7 +21,7 @@ public class MainFrame extends JFrame {
     JMenuItem it2 = new JMenuItem("Add friend");
     JMenuItem it3 = new JMenuItem("Chat");
     JMenuItem it4 = new JMenuItem("DRM System");
-
+ static Client client;
     public MainFrame() {
         int x = 900, y = 550;
 //        it2.setEnabled(false);
@@ -62,6 +64,7 @@ public class MainFrame extends JFrame {
         s.setBounds(50, 15, x, y);
         this.setLayout(null);
         this.add(s);
+        client=new Client();
     }
 
     public static void main(String[] args) {
