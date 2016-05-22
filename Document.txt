@@ -77,7 +77,8 @@ KAB = KBA
 	5.1 需要发送的文本信息为T
 	5.2 AB之间已经共享对称秘钥KAB，KBA
 	5.3 所有消息格式都是KAS(FORWARD+IDA+IDB+KAB(CHAT+T+KAB(TIME))+KAS(TIME))
-
+        5.4 发送文件的格式为KAS(FORWARD+IDA+IDB+KAB(FILE+(MAC+FileContent)+KAB(TIME))+KAS(TIME))
+        
 6 获得好友列表
 	6.1 C向服务器发送消息KCS(FRIEND_LIST+IDC+KCS(TIME))
 	6.2 服务器返回消息KSC(FRIEND_LIST+friend_id_list+KSC(TIME))
@@ -85,4 +86,10 @@ KAB = KBA
 7 查询用户公钥
 	7.1 C向服务器发送消息KCS(QUERY+IDC+IDQ+KCS(TIME))
 	7.2 服务器返回消息KSC(QUERY+KpubQ+KSC(TIME))
+	
+8 DRM
+       8.1 用户向服务器购买文件息KAS(BUY+IDA+KAS(TIME))
+       8.2 服务器存储购买记录，传输文件和激活码给客户端KAS(BUY_SUCCESS+number+(MAC+FileContent)+KAS(TIME))
+       8.3 用户向服务器请求密钥KAS(ASK+record_id+file_id+IDA+KAS(TIME))
+       8.4 服务器返回密钥KAS(KEY+file_key+KAS(TIME))
 	
