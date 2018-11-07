@@ -11,7 +11,9 @@
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
-/safe_chat.iml
 /.idea
-
 /out
+client/res
+server/res
+
+.DS_Store

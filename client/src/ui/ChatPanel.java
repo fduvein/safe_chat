@@ -1,16 +1,16 @@
 package ui;
 
-import kernl.Friend;
-import kernl.User;
+import sun.applet.Main;
+import user.Friend;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Vector;
 
@@ -27,8 +27,8 @@ public class ChatPanel extends JPanel {
     private JList list = new JList();
     private JTextArea chat = new JTextArea();
     private JTextArea message = new JTextArea();
-    private JLabel l4 = new JLabel();
-    private JButton send = new JButton("Send message.Message");
+    public JTextArea l4 = new JTextArea();
+    private JButton send = new JButton("Send message");
     private JButton choose = new JButton("choose File");
     private JButton file = new JButton("Send File");
     private JTextField name = new JTextField();
@@ -38,26 +38,15 @@ public class ChatPanel extends JPanel {
      * object about logic
      **/
     private File selectedFile = null;//the file to send
-    public Vector<Friend> friends = new Vector();//friendsList
+    public Vector<Friend> friends = new Vector<>();//friendsList
     private ArrayList<MessageList> messageList = new ArrayList();//messageList,a messageList object record the messages between the user and one of its friends
-    private Friend current;//the current friend you are chatting with
+    private String current;//the current friend you are chatting with
 
     public ChatPanel(int x, int y) {
         this.setLayout(null);
-
-
+        l4.setLineWrap(true);
+        l4.setEditable(false);
         list.addListSelectionListener(new CFriend());
-//        These are test code
-//        messageList.get(1).sendMessage("Hello");
-//        messageList.get(1).sendMessage("I am hero");
-//        messageList.get(1).receiveMessage("Hello");
-//        messageList.get(1).sendMessage("What's your name");
-//        messageList.get(1).receiveMessage("I am bob");
-//        messageList.get(1).receiveMessage("I am 18");
-//        addSendMessage(new Friend("aa","aa").id,"Hello");
-//        addReceiveMessage(new Friend("aa","aa").id,"Hi");
-//        test end
-
         //the code below is about gui
         JScrollPane js1 = new JScrollPane(list);
         l1.setBounds(250, 0, 400, 20);
@@ -101,13 +90,18 @@ public class ChatPanel extends JPanel {
 
     }
 
-    //useless code
-    //load the friendList from a file
-    public  void loadFriend(ArrayList<Friend> friend) {
-        for(int i=0;i<friend.size();i++){
-            friends.add(new Friend(friend.get(i).getId(),friend.get(i).getPublicKey()));
-        }
+    public void loadFriend() {
         list.setListData(friends);
+    }
+
+    public void addFriend(Friend friend) {
+        for (int i = 0; i < friends.size(); i++) {
+            if (friends.get(i).getId().equals(friend.getId())) {
+                return;
+            }
+        }
+        friends.add(friend);
+        messageList.add(new MessageList(friend.getId()));
     }
 
     //choose a file
@@ -134,13 +128,16 @@ public class ChatPanel extends JPanel {
     private class SFile implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            //current:the friend which the message is sent
-            //selectedFile:the file to send
-            //check whether the file is null
-            //if send successfully set the file=null
-            //inform the user if necessary
-            //l4 is a info JLable
-            //l4.setText(m);
+            if (selectedFile != null) {
+                try {
+                    MainFrame.client.sendFile(current, selectedFile);
+                } catch (NoSuchAlgorithmException | InvalidKeyException e1) {
+                    e1.printStackTrace();
+                    l4.setText("Encrypt error");
+                }
+            } else {
+                l4.setText("Please choose a file to send");
+            }
         }
     }
 
@@ -149,17 +146,12 @@ public class ChatPanel extends JPanel {
     private class SMessage implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            //current:the friend which the message is sent
-            //String m=message.getText();:the message to send
-            // if send successfully add the message to list and reload the messageList
-            //addSendMessage(current.id,m);
-            //loadMessage(current.id);
-            //inform the user if necessary
-            //l4 is a info JLable
-            //l4.setText(m);
-            //What's more
-            // if receive a message add the message to list
-            // addReceiveMessage(id,m);
+            if (current != null) {
+                MainFrame.client.chat(current, message.getText());
+                message.setText("");
+            } else {
+                l4.setText("Please choose a friend to chat");
+            }
         }
     }
 
@@ -169,9 +161,10 @@ public class ChatPanel extends JPanel {
         public void valueChanged(ListSelectionEvent e) {
             {
                 String a = ((JList) e.getSource()).getSelectedValue().toString();
+                // MainFrame.client.sendSessionKey(a);
                 for (int i = 0; i < friends.size(); i++) {
                     if (a.equals(friends.get(i).getId())) {
-                        current = friends.get(i);
+                        current = friends.get(i).getId();
                         break;
                     }
                 }
@@ -180,19 +173,25 @@ public class ChatPanel extends JPanel {
         }
     }
 
-    private void addSendMessage(String id, String message) {
+    public void addSendMessage(String id, String message) {
         for (int i = 0; i < messageList.size(); i++) {
             if (messageList.get(i).id.equals(id)) {
                 messageList.get(i).sendMessage(message);
             }
         }
+        if (id.equals(current)) {
+            loadMessage(id);
+        }
     }
 
-    private void addReceiveMessage(String id, String message) {
+    public void addReceiveMessage(String id, String message) {
         for (int i = 0; i < messageList.size(); i++) {
             if (messageList.get(i).id.equals(id)) {
                 messageList.get(i).receiveMessage(message);
             }
+        }
+        if (id.equals(current)) {
+            loadMessage(id);
         }
     }
 

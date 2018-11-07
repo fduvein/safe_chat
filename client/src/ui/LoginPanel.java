@@ -3,8 +3,9 @@ package ui;
 import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
-import java.awt.event.*;
-import java.io.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
 
 /**
  * Created by Tanxin on 2016/5/16.
@@ -13,14 +14,13 @@ import java.io.*;
 *The panel used to login and register
  */
 public class LoginPanel extends JPanel {
-    JMenuItem it2;
-    JMenuItem it3;
-    JMenuItem it4;
 
-    public LoginPanel(int x, int y, JMenuItem t2, JMenuItem t3, JMenuItem t4) {
+    public LP login = new LP();
+    public RP register = new RP();
+
+    public LoginPanel(int x, int y) {
         this.setSize(x, y);
-        LP login = new LP();
-        RP register = new RP();
+
         this.setLayout(null);
         this.add(login);
         this.add(register);
@@ -29,21 +29,19 @@ public class LoginPanel extends JPanel {
         Border b = BorderFactory.createLineBorder(Color.BLACK);
         login.setBorder(b);
         register.setBorder(b);
-        it2 = t2;
-        it3 = t3;
-        it4 = t4;
     }
 
     // panel to login
-    class LP extends JPanel {
+    public class LP extends JPanel {
         private File password = null;
+        public JLabel l4 = new JLabel("ID can contain letters,digits and \"_\"");
 
         LP() {
             this.setLayout(null);
             JLabel l1 = new JLabel("Login");
             JLabel l2 = new JLabel("ID");
             JLabel l3 = new JLabel("Password");
-            JLabel l4 = new JLabel("ID can contain letters,digits and \"_\"");
+
             l4.setBorder(BorderFactory.createEtchedBorder());
             JTextField id = new JTextField();
             JTextArea pass = new JTextArea();
@@ -95,36 +93,28 @@ public class LoginPanel extends JPanel {
                     //add code here
                     // if(password!=null) //to check whether the password is read
                     String lid = id.getText();
-                    if(password == null){
+                    if (password == null) {
                         JOptionPane.showMessageDialog(null, "illegal password");
-                    }else{
-                    if (checkId(lid)  ) {
-
-                        String aa = MainFrame.client.login(lid, password);
-                        l4.setText(aa);
-                        if (aa.equals("login success")) {
-                            it2.setEnabled(true);
-                            it3.setEnabled(true);
-                            it4.setEnabled(true);
-                        }
-
                     } else {
-                        JOptionPane.showMessageDialog(null, "illegal id");
-                    }}
-
-
+                        if (checkId(lid)) {
+                            MainFrame.client.login(lid, password.getPath());
+                        } else {
+                            JOptionPane.showMessageDialog(null, "illegal id");
+                        }
+                    }
                 }
             });
         }
     }
 
     // panel to register
-    class RP extends JPanel {
+    public class RP extends JPanel {
+        public JLabel l4 = new JLabel("ID can contain letters,digits and \"_\"");
+
         RP() {
             this.setLayout(null);
             JLabel l1 = new JLabel("Register");
             JLabel l2 = new JLabel("ID");
-            JLabel l4 = new JLabel("ID can contain letters,digits and \"_\"");
             l4.setBorder(BorderFactory.createEtchedBorder());
             JTextField id = new JTextField();
             l1.setBounds(20, 20, 300, 30);
@@ -144,7 +134,7 @@ public class LoginPanel extends JPanel {
                 public void actionPerformed(ActionEvent e) {
                     String rid = id.getText();
                     if (checkId(rid)) {
-                        l4.setText(MainFrame.client.register(rid));
+                        MainFrame.client.register(rid);
                     } else {
                         JOptionPane.showMessageDialog(null, "illegal id");
                     }

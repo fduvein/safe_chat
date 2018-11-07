@@ -15,7 +15,7 @@ public class AddFriendPanel extends JPanel {
     private JTextField id = new JTextField();
     private JButton bt = new JButton("Send Request");
     private JLabel l2 = new JLabel("ID of Friend");
-    private JLabel l4 = new JLabel();
+    public JLabel l4 = new JLabel();
 
     public AddFriendPanel(int x, int y) {
         l4.setBorder(BorderFactory.createEtchedBorder());
@@ -43,7 +43,7 @@ public class AddFriendPanel extends JPanel {
             //add code here
             String a = id.getText();
             if (checkId(a)) {
-                MainFrame.client.friending(a);
+                MainFrame.client.friend(a);
             } else {
                 l4.setText("illegal ID");
             }
